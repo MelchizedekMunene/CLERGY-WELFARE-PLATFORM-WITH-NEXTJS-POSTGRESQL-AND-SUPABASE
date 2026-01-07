@@ -1,0 +1,108 @@
+// Prisma schema generated from shepherds_welfare_project_plan.csv
+// Implements: users, contributions, loans, events
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum ContributionType {
+  MONTHLY
+  SPECIAL
+  LOAN_REPAYMENT
+}
+
+enum LoanStatus {
+  ACTIVE
+  COMPLETED
+  DEFAULTED
+}
+
+enum EventType {
+  MEETING
+  PROJECT
+  SOCIAL
+}
+
+model User {
+  id                String         @id @default(uuid()) @db.Uuid
+  email             String         @unique
+  phone             String         @unique
+  full_name         String
+  role              Role           @default(MEMBER)
+  church_name       String?
+  registration_date DateTime
+  is_active         Boolean        @default(true)
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
+
+  contributions     Contribution[]
+  loans             Loan[]
+  eventsCreated     Event[]        @relation("EventsCreated")
+  recordedContribs  Contribution[] @relation("RecordedContributions")
+  approvedLoans     Loan[]         @relation("ApprovedLoans")
+
+  @@map("users")
+}
+
+model Contribution {
+  id                 String           @id @default(uuid()) @db.Uuid
+  user_id            String           @db.Uuid
+  amount             Decimal          @db.Decimal(10,2)
+  contribution_date  DateTime
+  contribution_type  ContributionType
+  payment_method     String?
+  transaction_ref    String?
+  recorded_by        String?          @db.Uuid
+  notes              String?
+  created_at         DateTime         @default(now())
+
+  user               User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  recordedBy         User?            @relation("RecordedContributions", fields: [recorded_by], references: [id])
+
+  @@map("contributions")
+}
+
+model Loan {
+  id                String    @id @default(uuid()) @db.Uuid
+  user_id           String    @db.Uuid
+  loan_amount       Decimal   @db.Decimal(10,2)
+  interest_rate     Decimal?  @db.Decimal(5,2)
+  disbursement_date DateTime
+  repayment_period  Int
+  balance_remaining Decimal   @db.Decimal(10,2)
+  status            LoanStatus
+  approved_by       String?   @db.Uuid
+  created_at        DateTime  @default(now())
+
+  user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  approvedBy        User?     @relation("ApprovedLoans", fields: [approved_by], references: [id])
+
+  @@map("loans")
+}
+
+model Event {
+  id           String    @id @default(uuid()) @db.Uuid
+  title        String
+  description  String?
+  event_date   DateTime
+  location     String?
+  event_type   EventType?
+  created_by   String    @db.Uuid
+  is_published Boolean   @default(true)
+  created_at   DateTime  @default(now())
+
+  createdBy    User      @relation("EventsCreated", fields: [created_by], references: [id])
+
+  @@map("events")
+}
