@@ -40,6 +40,7 @@ model User {
   phone             String         @unique
   full_name         String
   role              Role           @default(MEMBER)
+  password          String
   church_name       String?
   registration_date DateTime
   is_active         Boolean        @default(true)
