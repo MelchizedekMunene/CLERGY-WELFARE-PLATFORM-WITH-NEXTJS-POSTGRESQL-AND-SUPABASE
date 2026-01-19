@@ -45,7 +45,8 @@ export default function SignInPage() {
       }
 
       if (result?.ok) {
-        router.push('/');
+        // Redirect to dashboard - will check role and redirect to appropriate dashboard
+        router.push('/dashboard');
         router.refresh();
       }
     } catch (err) {

@@ -41,7 +41,7 @@ model User {
   full_name         String
   role              Role           @default(MEMBER)
   password          String
-  church_name       String?
+  church_name       String
   registration_date DateTime
   is_active         Boolean        @default(true)
   created_at        DateTime       @default(now())

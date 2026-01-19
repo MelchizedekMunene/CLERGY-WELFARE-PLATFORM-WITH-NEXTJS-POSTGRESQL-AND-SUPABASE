@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import AdminMemberForm from '@/components/AdminMemberForm';
+import AdminMemberForm from '@/app/components/AdminMemberForm';
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -207,7 +207,7 @@ export default function AdminDashboard() {
               </div>
             ) : members.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
-                No members found. Click "Add New Member" to get started.
+                No members found. Click Add New Member to get started.
               </div>
             ) : (
               <table className="w-full">
