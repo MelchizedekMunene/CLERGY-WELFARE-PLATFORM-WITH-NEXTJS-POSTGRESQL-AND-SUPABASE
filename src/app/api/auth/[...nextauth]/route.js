@@ -3,10 +3,8 @@
 
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
-
-const prisma = new PrismaClient();
 
 export const authOptions = {
   providers: [
@@ -106,8 +104,6 @@ export const authOptions = {
         } catch (error) {
           console.error('Authorization error:', error.message);
           throw new Error(error.message || 'Authentication failed');
-        } finally {
-          await prisma.$disconnect();
         }
       },
     }),

@@ -1,14 +1,12 @@
 //Admin Endpoint (PROTECTED)
-// Protected endpoint for admin to register members
-// Integrates with Prisma ORM and Supabase PostgreSQL database
+//Protected endpoint for admin to register members
+//Integrates with Prisma ORM and Supabase PostgreSQL database
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../[...nextauth]/route';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
-
-const prisma = new PrismaClient();
 
 export async function POST(request) {
   try {
@@ -173,7 +171,5 @@ export async function POST(request) {
       { error: 'Internal server error. Please try again later.' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

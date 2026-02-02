@@ -39,7 +39,9 @@ export default function AdminDashboard() {
   };
 
   const handleMemberCreated = (newMember) => {
-    setMembers((prev) => [newMember.user, ...prev]);
+    // `AdminMemberForm` passes the created user object directly (data.user),
+    // so insert `newMember` itself rather than `newMember.user` which is undefined.
+    setMembers((prev) => [newMember, ...prev]);
     setTimeout(() => {
       setShowMemberForm(false);
     }, 2000);
