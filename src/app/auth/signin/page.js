@@ -280,7 +280,7 @@ export default function SignInPage() {
                 <div className="flex justify-between items-center">
                   <button
                     type="button"
-                    onClick={() => router.push('/auth/forgot-password')}
+                    onClick={() => router.push('/auth/password-reset')}
                     className="text-sm text-blue-600 hover:text-blue-800 font-medium transition"
                     disabled={isLoading}
                   >
