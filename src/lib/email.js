@@ -1,19 +1,11 @@
-// Email sending utility using Nodemailer (SMTP)
-import nodemailer from 'nodemailer';
+// Email sending utility using SendGrid
+import sgMail from '@sendgrid/mail';
 
-// Create a transporter using SMTP configuration
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-});
+// Initialize SendGrid with API key
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 /**
- * Send OTP via email
+ * Send OTP via email using SendGrid
  * @param {string} email - Recipient email address
  * @param {string} otp - OTP code to send
  * @param {string} recipientName - Recipient's full name
@@ -26,19 +18,28 @@ export async function sendOTPEmail(email, otp, recipientName = 'User') {
       throw new Error('Email and OTP are required');
     }
 
-    const mailOptions = {
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    const msg = {
       to: email,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'Clergy Platform',
+      },
       subject: 'Clergy Platform - Password Reset Code',
-      html: generateOTPEmailHTML(otp, recipientName),
       text: generateOTPEmailText(otp, recipientName),
+      html: generateOTPEmailHTML(otp, recipientName),
     };
 
-    const result = await transporter.sendMail(mailOptions);
-    console.log(`OTP email sent to ${email}:`, result.messageId);
+    const result = await sgMail.send(msg);
+    console.log(`OTP email sent to ${email} via SendGrid`);
     return true;
   } catch (error) {
-    console.error('Error sending OTP email:', error);
+    console.error('Error sending OTP email via SendGrid:', error);
+    
+    // SendGrid specific error handling
+    if (error.response) {
+      console.error('SendGrid Error Body:', error.response.body);
+    }
+    
     throw new Error(`Failed to send OTP email: ${error.message}`);
   }
 }
@@ -54,16 +55,69 @@ function generateOTPEmailHTML(otp, name) {
     <!DOCTYPE html>
     <html>
     <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5; }
-        .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { color: #2c3e50; margin: 0; font-size: 28px; }
-        .content { text-align: center; margin: 30px 0; }
-        .otp-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-        .otp-code { font-size: 36px; font-weight: bold; letter-spacing: 4px; font-family: 'Courier New', monospace; margin: 15px 0; }
-        .footer { text-align: center; color: #7f8c8d; font-size: 12px; margin-top: 30px; }
-        .expiry { background-color: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; margin: 20px 0; font-size: 14px; }
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+          background-color: #f5f5f5; 
+          margin: 0;
+          padding: 0;
+        }
+        .container { 
+          max-width: 600px; 
+          margin: 0 auto; 
+          background-color: white; 
+          padding: 40px; 
+          border-radius: 8px; 
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+        }
+        .header { 
+          text-align: center; 
+          margin-bottom: 30px; 
+        }
+        .header h1 { 
+          color: #2c3e50; 
+          margin: 0; 
+          font-size: 28px; 
+        }
+        .content { 
+          text-align: center; 
+          margin: 30px 0; 
+        }
+        .otp-box { 
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+          color: white; 
+          padding: 20px; 
+          border-radius: 8px; 
+          margin: 20px 0; 
+        }
+        .otp-code { 
+          font-size: 36px; 
+          font-weight: bold; 
+          letter-spacing: 4px; 
+          font-family: 'Courier New', monospace; 
+          margin: 15px 0; 
+        }
+        .footer { 
+          text-align: center; 
+          color: #7f8c8d; 
+          font-size: 12px; 
+          margin-top: 30px; 
+        }
+        .expiry { 
+          background-color: #fff3cd; 
+          color: #856404; 
+          padding: 12px; 
+          border-radius: 6px; 
+          margin: 20px 0; 
+          font-size: 14px; 
+        }
+        .warning {
+          color: #e74c3c;
+          font-weight: bold;
+          margin: 15px 0;
+        }
       </style>
     </head>
     <body>
@@ -84,7 +138,7 @@ function generateOTPEmailHTML(otp, name) {
             ⏱️ This code expires in <strong>10 minutes</strong>
           </div>
           
-          <p style="color: #e74c3c; font-weight: bold;">Never share this code with anyone!</p>
+          <p class="warning">Never share this code with anyone!</p>
           <p>If you didn't request a password reset, please ignore this email and your password will remain unchanged.</p>
         </div>
         
@@ -132,20 +186,56 @@ If you didn't request this, please ignore this email.
  */
 export async function sendPasswordResetConfirmationEmail(email, name = 'User') {
   try {
-    const mailOptions = {
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    const msg = {
       to: email,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'Clergy Platform',
+      },
       subject: 'Clergy Platform - Password Reset Successful',
       html: `
         <!DOCTYPE html>
         <html>
         <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5; }
-            .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-            .header { text-align: center; margin-bottom: 30px; }
-            .header h1 { color: #27ae60; margin: 0; font-size: 28px; }
-            .success { background-color: #d4edda; color: #155724; padding: 15px; border-radius: 6px; margin: 20px 0; }
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+              background-color: #f5f5f5; 
+              margin: 0;
+              padding: 0;
+            }
+            .container { 
+              max-width: 600px; 
+              margin: 0 auto; 
+              background-color: white; 
+              padding: 40px; 
+              border-radius: 8px; 
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 30px; 
+            }
+            .header h1 { 
+              color: #27ae60; 
+              margin: 0; 
+              font-size: 28px; 
+            }
+            .success { 
+              background-color: #d4edda; 
+              color: #155724; 
+              padding: 15px; 
+              border-radius: 6px; 
+              margin: 20px 0; 
+            }
+            .footer {
+              text-align: center;
+              color: #7f8c8d;
+              font-size: 12px;
+              margin-top: 30px;
+            }
           </style>
         </head>
         <body>
@@ -158,16 +248,57 @@ export async function sendPasswordResetConfirmationEmail(email, name = 'User') {
               <p>Your password has been successfully reset. You can now log in with your new password.</p>
             </div>
             <p>If you didn't make this change, please contact support immediately.</p>
+            <div class="footer">
+              <p>© 2026 Clergy Platform. All rights reserved.</p>
+            </div>
           </div>
         </body>
         </html>
       `,
+      text: `
+PASSWORD RESET SUCCESSFUL
+
+Hi ${name},
+
+Your password has been successfully reset. You can now log in with your new password.
+
+If you didn't make this change, please contact support immediately.
+
+© 2026 Clergy Platform
+      `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sgMail.send(msg);
+    console.log(`Confirmation email sent to ${email} via SendGrid`);
     return true;
   } catch (error) {
-    console.error('Error sending confirmation email:', error);
+    console.error('Error sending confirmation email via SendGrid:', error);
+    
+    if (error.response) {
+      console.error('SendGrid Error Body:', error.response.body);
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * Send bulk emails (optional - for future use)
+ * @param {Array} messages - Array of message objects
+ * @returns {Promise<boolean>} True if sent successfully
+ */
+export async function sendBulkEmails(messages) {
+  try {
+    const result = await sgMail.send(messages);
+    console.log(`Bulk emails sent via SendGrid: ${messages.length} messages`);
+    return true;
+  } catch (error) {
+    console.error('Error sending bulk emails via SendGrid:', error);
+    
+    if (error.response) {
+      console.error('SendGrid Error Body:', error.response.body);
+    }
+    
     throw error;
   }
 }
