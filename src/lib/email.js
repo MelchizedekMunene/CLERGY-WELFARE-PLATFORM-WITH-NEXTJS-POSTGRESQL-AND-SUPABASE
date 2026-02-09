@@ -164,7 +164,7 @@ PASSWORD RESET REQUEST
 
 Hi ${name},
 
-We received a request to reset your Clergy Platform password. Use the code below:
+We received a request to reset your Shepherds Welfare Platform Password. Use the code below:
 
 ${otp}
 

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import AdminMemberForm from '@/app/components/AdminMemberForm';
+import MemberDetailModal from '@/app/components/MemberDetailModal';
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -12,6 +13,8 @@ export default function AdminDashboard() {
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [members, setMembers] = useState([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMember, setSelectedMember] = useState(null);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -39,13 +42,35 @@ export default function AdminDashboard() {
   };
 
   const handleMemberCreated = (newMember) => {
-    // `AdminMemberForm` passes the created user object directly (data.user),
-    // so insert `newMember` itself rather than `newMember.user` which is undefined.
     setMembers((prev) => [newMember, ...prev]);
     setTimeout(() => {
       setShowMemberForm(false);
     }, 2000);
   };
+
+  const handleMemberUpdated = (updatedMember) => {
+    if (!updatedMember) {
+      // Member was deleted
+      setMembers((prev) => prev.filter((m) => m.id !== selectedMember.id));
+      setSelectedMember(null);
+    } else {
+      // Member was updated
+      setMembers((prev) =>
+        prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
+      );
+      setSelectedMember(null);
+    }
+  };
+
+  const filteredMembers = members.filter((member) => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      member.full_name.toLowerCase().includes(searchLower) ||
+      member.email.toLowerCase().includes(searchLower) ||
+      member.phone.includes(searchTerm) ||
+      member.church_name.toLowerCase().includes(searchLower)
+    );
+  });
 
   const handleSignOut = async () => {
     const { signOut } = await import('next-auth/react');
@@ -172,7 +197,7 @@ export default function AdminDashboard() {
         {/* Members Section */}
         <div className="bg-white rounded-lg shadow border border-gray-200">
           <div className="p-6 border-b border-gray-200">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-4">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Members</h2>
                 <p className="text-sm text-gray-500 mt-1">
@@ -199,6 +224,17 @@ export default function AdminDashboard() {
                 Add New Member
               </button>
             </div>
+
+            {/* Search Bar */}
+            <div className="mt-4">
+              <input
+                type="text"
+                placeholder="Search by name, email, phone, or church..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
           </div>
 
           {/* Members List */}
@@ -207,9 +243,9 @@ export default function AdminDashboard() {
               <div className="p-8 text-center text-gray-500">
                 Loading members...
               </div>
-            ) : members.length === 0 ? (
+            ) : filteredMembers.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
-                No members found. Click Add New Member to get started.
+                {searchTerm ? 'No members match your search.' : 'No members found. Click Add New Member to get started.'}
               </div>
             ) : (
               <table className="w-full">
@@ -230,10 +266,13 @@ export default function AdminDashboard() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {members.map((member) => (
+                  {filteredMembers.map((member) => (
                     <tr key={member.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
@@ -266,6 +305,14 @@ export default function AdminDashboard() {
                           {member.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => setSelectedMember(member)}
+                          className="text-blue-600 hover:text-blue-900 font-semibold text-sm"
+                        >
+                          View/Edit
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -280,6 +327,15 @@ export default function AdminDashboard() {
         <AdminMemberForm
           onClose={() => setShowMemberForm(false)}
           onSuccess={handleMemberCreated}
+        />
+      )}
+
+      {/* Member Detail Modal */}
+      {selectedMember && (
+        <MemberDetailModal
+          member={selectedMember}
+          onClose={() => setSelectedMember(null)}
+          onSuccess={handleMemberUpdated}
         />
       )}
     </div>

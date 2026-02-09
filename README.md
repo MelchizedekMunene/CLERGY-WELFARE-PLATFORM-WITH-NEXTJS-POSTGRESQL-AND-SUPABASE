@@ -28,7 +28,8 @@ The **Shepherds Welfare Platform** is a comprehensive welfare management system 
 
 - ✅ User authentication and authorization
 - ✅ Contribution tracking (monthly, special, loan repayment)
-- ✅ Loan management system
+ - ✅ Contribution tracking (monthly, special, investments)
+ - ✅ Group asset/investment management
 - ✅ Event coordination and management
 - ✅ Role-based access control (Admin & Member)
 - ✅ Real-time data synchronization
@@ -88,7 +89,7 @@ The **Shepherds Welfare Platform** is a comprehensive welfare management system 
 │              FRONTEND LAYER (React Components)            │
 │  • Sign-In Page          • Dashboard                      │
 │  • User Profile          • Event Management               │
-│  • Contribution Tracking • Loan Management                │
+│  • Contribution Tracking • Asset/Investment Management    │
 └──────────────────────────────────────────────────────────┘
                             ↓
 ┌──────────────────────────────────────────────────────────┐
@@ -100,7 +101,7 @@ The **Shepherds Welfare Platform** is a comprehensive welfare management system 
 ┌──────────────────────────────────────────────────────────┐
 │           API ROUTES LAYER (Next.js API)                 │
 │  • Authentication Routes    • User Routes                │
-│  • Contribution Routes      • Loan Routes                │
+│  • Contribution Routes      • Asset/Investment Routes    │
 │  • Event Routes             • Profile Routes             │
 └──────────────────────────────────────────────────────────┘
                             ↓
@@ -113,7 +114,7 @@ The **Shepherds Welfare Platform** is a comprehensive welfare management system 
 ┌──────────────────────────────────────────────────────────┐
 │    DATABASE LAYER (Supabase PostgreSQL)                  │
 │  • Users Table             • Contributions Table          │
-│  • Loans Table             • Events Table                 │
+│  • Assets Table            • Events Table                 │
 │  • Row-Level Security      • Real-time Subscriptions      │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -285,7 +286,7 @@ shepherds-welfare-platform/
 │   │   │   ├── auth/            # Authentication endpoints
 │   │   │   ├── users/           # User management
 │   │   │   ├── contributions/   # Contribution tracking
-│   │   │   ├── loans/           # Loan management
+│   │   │   ├── assets/          # Asset & investment management
 │   │   │   └── events/          # Event management
 │   │   └── Components/          # Reusable components
 │
@@ -338,22 +339,29 @@ model Contribution {
   id               String
   user_id          String (FK)
   amount           Float
-  contribution_type ContributionType (MONTHLY | SPECIAL | LOAN_REPAYMENT)
+  contribution_type ContributionType (MONTHLY | SPECIAL)
   contribution_date DateTime
   recorded_by      String (FK)
 }
 ```
 
-### Loans
+### Assets / Investments
 
 ```prisma
-model Loan {
-  id               String
-  user_id          String (FK)
-  amount           Float
-  loan_date        DateTime
-  repayment_deadline DateTime
-  status           LoanStatus (ACTIVE | COMPLETED | DEFAULTED)
+model Asset {
+  id            String
+  name          String
+  description   String?
+  purchase_date DateTime?
+  purchase_price Float?
+  current_value  Float?
+}
+
+model AssetInvestment {
+  id           String
+  asset_id     String (FK)
+  total_amount Float
+  acquired_at  DateTime
 }
 ```
 

@@ -85,7 +85,7 @@ export default function MemberDashboard() {
             {[
               { id: 'overview', label: 'Overview', icon: '📊' },
               { id: 'contributions', label: 'Contributions', icon: '💰' },
-              { id: 'loans', label: 'Loans', icon: '📋' },
+              { id: 'assets', label: 'Assets', icon: '🏦' },
               { id: 'events', label: 'Events', icon: '📅' },
               { id: 'profile', label: 'Profile', icon: '👤' },
             ].map((tab) => (
@@ -126,11 +126,11 @@ export default function MemberDashboard() {
               <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">Active Loans</p>
+                    <p className="text-sm text-gray-500">Group Assets</p>
                     <p className="text-3xl font-bold text-gray-900 mt-1">0</p>
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-xl">📋</span>
+                    <span className="text-xl">🏦</span>
                   </div>
                 </div>
               </div>
@@ -153,9 +153,9 @@ export default function MemberDashboard() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Quick Summary
               </h2>
-              <p className="text-gray-600">
+                <p className="text-gray-600">
                 Your member dashboard is set up and ready to use. Explore the
-                tabs above to view your contributions, loans, upcoming events,
+                tabs above to view your contributions, assets, upcoming events,
                 and manage your profile.
               </p>
             </div>
@@ -175,15 +175,15 @@ export default function MemberDashboard() {
           </div>
         )}
 
-        {/* Loans Tab */}
-        {activeTab === 'loans' && (
+        {/* Assets Tab */}
+        {activeTab === 'assets' && (
           <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Your Loans
+              Group Assets & Investments
             </h2>
             <p className="text-gray-600">
-              No active loans. You can apply for a loan through the loans
-              section.
+              No assets recorded. Contact your administrator to view or add group
+              investments and related documents.
             </p>
           </div>
         )}

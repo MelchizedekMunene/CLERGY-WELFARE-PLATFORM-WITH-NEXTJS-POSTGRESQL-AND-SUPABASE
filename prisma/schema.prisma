@@ -19,14 +19,9 @@ enum Role {
 enum ContributionType {
   MONTHLY
   SPECIAL
-  LOAN_REPAYMENT
 }
 
-enum LoanStatus {
-  ACTIVE
-  COMPLETED
-  DEFAULTED
-}
+// Loan entities removed — replaced by group assets/investments
 
 enum EventType {
   MEETING
@@ -48,10 +43,12 @@ model User {
   updated_at        DateTime       @updatedAt
 
   contributions     Contribution[]
-  loans             Loan[]
+  assets            Asset[]
   eventsCreated     Event[]        @relation("EventsCreated")
   recordedContribs  Contribution[] @relation("RecordedContributions")
-  approvedLoans     Loan[]         @relation("ApprovedLoans")
+  uploadedDocuments AssetDocument[]
+  assetInvestments  AssetInvestment[]
+  // Note: removed loan relations; added asset relations below as needed
 
   @@map("users")
 }
@@ -65,31 +62,62 @@ model Contribution {
   payment_method     String?
   transaction_ref    String?
   recorded_by        String?          @db.Uuid
+  investment_id      String?          @db.Uuid
   notes              String?
   created_at         DateTime         @default(now())
 
   user               User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   recordedBy         User?            @relation("RecordedContributions", fields: [recorded_by], references: [id])
+  investment         AssetInvestment? @relation("InvestmentContributions", fields: [investment_id], references: [id])
 
   @@map("contributions")
 }
 
-model Loan {
-  id                String    @id @default(uuid()) @db.Uuid
-  user_id           String    @db.Uuid
-  loan_amount       Decimal   @db.Decimal(10,2)
-  interest_rate     Decimal?  @db.Decimal(5,2)
-  disbursement_date DateTime
-  repayment_period  Int
-  balance_remaining Decimal   @db.Decimal(10,2)
-  status            LoanStatus
-  approved_by       String?   @db.Uuid
-  created_at        DateTime  @default(now())
+model Asset {
+  id            String            @id @default(uuid()) @db.Uuid
+  name          String
+  description   String?
+  purchase_date DateTime?
+  purchase_price Decimal?         @db.Decimal(12,2)
+  current_value  Decimal?         @db.Decimal(12,2)
+  created_by    String            @db.Uuid
+  created_at    DateTime          @default(now())
 
-  user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  approvedBy        User?     @relation("ApprovedLoans", fields: [approved_by], references: [id])
+  documents     AssetDocument[]
+  investments   AssetInvestment[]
+  createdBy     User              @relation(fields: [created_by], references: [id])
 
-  @@map("loans")
+  @@map("assets")
+}
+
+model AssetDocument {
+  id          String   @id @default(uuid()) @db.Uuid
+  asset_id    String   @db.Uuid
+  filename    String
+  url         String
+  uploaded_by String   @db.Uuid
+  is_sensitive Boolean @default(true)
+  created_at  DateTime @default(now())
+
+  asset       Asset    @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  uploadedBy  User     @relation(fields: [uploaded_by], references: [id])
+
+  @@map("asset_documents")
+}
+
+model AssetInvestment {
+  id           String        @id @default(uuid()) @db.Uuid
+  asset_id     String        @db.Uuid
+  total_amount Decimal       @db.Decimal(12,2)
+  acquired_at  DateTime
+  created_by   String        @db.Uuid
+  created_at   DateTime      @default(now())
+
+  asset        Asset         @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  createdBy    User          @relation(fields: [created_by], references: [id])
+  contributions Contribution[] @relation("InvestmentContributions")
+
+  @@map("asset_investments")
 }
 
 model Event {
