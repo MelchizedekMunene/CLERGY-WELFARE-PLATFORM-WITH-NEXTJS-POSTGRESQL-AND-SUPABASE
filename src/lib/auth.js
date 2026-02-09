@@ -50,8 +50,6 @@ export async function getCurrentUser() {
   } catch (error) {
     console.error('Error getting current user:', error);
     return null;
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -113,8 +111,6 @@ export async function getUserById(userId) {
   } catch (error) {
     console.error('Error fetching user by ID:', error);
     return null;
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -144,8 +140,6 @@ export async function getAllMembers() {
   } catch (error) {
     console.error('Error fetching members:', error);
     return [];
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -175,8 +169,6 @@ export async function getAllAdmins() {
   } catch (error) {
     console.error('Error fetching admins:', error);
     return [];
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -207,8 +199,7 @@ export async function deactivateUser(userId) {
   } catch (error) {
     console.error('Error deactivating user:', error);
     return null;
-  } finally {
-    await prisma.$disconnect();
+
   }
 }
 
@@ -239,8 +230,6 @@ export async function activateUser(userId) {
   } catch (error) {
     console.error('Error activating user:', error);
     return null;
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -296,8 +285,6 @@ export async function updateUserProfile(userId, updates) {
   } catch (error) {
     console.error('Error updating user profile:', error);
     return null;
-  } finally {
-    await prisma.$disconnect();
   }
 }
 

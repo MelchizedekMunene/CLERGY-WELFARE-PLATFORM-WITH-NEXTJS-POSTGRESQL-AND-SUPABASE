@@ -61,7 +61,5 @@ export async function POST(request) {
       { error: error.message || 'Failed to request OTP' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

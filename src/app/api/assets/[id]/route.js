@@ -2,7 +2,8 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentSession } from '@/lib/auth';
 
 export async function GET(req, { params }) {
-  const { id } = params;
+  const { id } = await params;
+  if (!id) return new Response(JSON.stringify({ error: 'Asset id is required' }), { status: 400 });
   try {
     const session = await getCurrentSession();
 
@@ -27,13 +28,12 @@ export async function GET(req, { params }) {
   } catch (error) {
     console.error('GET /api/assets/[id] error', error);
     return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500 });
-  } finally {
-    try { await prisma.$disconnect(); } catch {};
   }
 }
 
 export async function DELETE(req, { params }) {
-  const { id } = params;
+  const { id } = await params;
+  if (!id) return new Response(JSON.stringify({ error: 'Asset id is required' }), { status: 400 });
   try {
     const session = await getCurrentSession();
     if (!session || session.user.role !== 'ADMIN') {
@@ -45,7 +45,5 @@ export async function DELETE(req, { params }) {
   } catch (error) {
     console.error('DELETE /api/assets/[id] error', error);
     return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500 });
-  } finally {
-    try { await prisma.$disconnect(); } catch {};
   }
 }

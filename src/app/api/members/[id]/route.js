@@ -5,7 +5,10 @@ import { prisma } from '@/lib/prisma';
 
 // GET member by ID (Admin only)
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
+  if (!id) {
+    return NextResponse.json({ error: 'Member id is required' }, { status: 400 });
+  }
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== 'ADMIN') {
@@ -45,14 +48,15 @@ export async function GET(request, { params }) {
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // UPDATE member (Admin only)
 export async function PUT(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
+  if (!id) {
+    return NextResponse.json({ error: 'Member id is required' }, { status: 400 });
+  }
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== 'ADMIN') {
@@ -126,14 +130,15 @@ export async function PUT(request, { params }) {
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // DELETE member (Admin only)
 export async function DELETE(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
+  if (!id) {
+    return NextResponse.json({ error: 'Member id is required' }, { status: 400 });
+  }
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== 'ADMIN') {
@@ -171,7 +176,5 @@ export async function DELETE(request, { params }) {
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

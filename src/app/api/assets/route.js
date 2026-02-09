@@ -20,8 +20,6 @@ export async function GET() {
   } catch (error) {
     console.error('GET /api/assets error', error);
     return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500 });
-  } finally {
-    try { await prisma.$disconnect(); } catch {};
   }
 }
 
@@ -50,7 +48,5 @@ export async function POST(req) {
   } catch (error) {
     console.error('POST /api/assets error', error);
     return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500 });
-  } finally {
-    try { await prisma.$disconnect(); } catch {};
   }
 }
