@@ -39,7 +39,8 @@ export default function AdminFinancialDashboard() {
   const handleEditClick = (contribution) => {
     setEditingId(contribution.id);
     setEditData({
-      amount: contribution.amount,
+      amount: Number(contribution.amount) || 0,
+      expectedAmount: Number(contribution.expectedAmount) || Number(contribution.amount) || 0,
       status: contribution.status,
       notes: contribution.notes,
     });
@@ -149,7 +150,9 @@ export default function AdminFinancialDashboard() {
             <tr>
               <th className="border p-2 text-left">Member Name</th>
               <th className="border p-2 text-left">Type</th>
-              <th className="border p-2 text-right">Amount</th>
+              <th className="border p-2 text-right">Expected</th>
+              <th className="border p-2 text-right">Actual</th>
+              <th className="border p-2 text-right">Balance</th>
               <th className="border p-2 text-left">Date</th>
               <th className="border p-2 text-left">Status</th>
               <th className="border p-2 text-left">Notes</th>
@@ -157,7 +160,13 @@ export default function AdminFinancialDashboard() {
             </tr>
           </thead>
           <tbody>
-            {contributions.map(contrib => (
+            {contributions.map(contrib => {
+              const expectedAmount = Number(contrib.expectedAmount) || Number(contrib.amount) || 0;
+              const actualAmount = Number(contrib.amount) || 0;
+              const balance = expectedAmount - actualAmount;
+              const balanceColor = balance === 0 ? 'text-green-600' : balance < 0 ? 'text-blue-600' : 'text-red-600';
+              
+              return (
               <tr key={contrib.id} className="hover:bg-gray-50">
                 <td className="border p-2">{contrib.user?.full_name || 'Unknown'}</td>
                 <td className="border p-2">
@@ -169,13 +178,33 @@ export default function AdminFinancialDashboard() {
                   {editingId === contrib.id ? (
                     <input
                       type="number"
-                      value={editData.amount}
-                      onChange={(e) => handleEditChange('amount', parseFloat(e.target.value))}
+                      value={editData.expectedAmount}
+                      onChange={(e) => handleEditChange('expectedAmount', parseFloat(e.target.value) || 0)}
                       className="border rounded px-2 py-1 w-24"
+                      step="0.01"
+                      min="0"
                     />
                   ) : (
-                    `KSh ${Number(contrib.amount).toLocaleString()}`
+                    `KSh ${expectedAmount.toLocaleString()}`
                   )}
+                </td>
+                <td className="border p-2 text-right">
+                  {editingId === contrib.id ? (
+                    <input
+                      type="number"
+                      value={editData.amount}
+                      onChange={(e) => handleEditChange('amount', parseFloat(e.target.value) || 0)}
+                      className="border rounded px-2 py-1 w-24"
+                      step="0.01"
+                      min="0"
+                    />
+                  ) : (
+                    `KSh ${actualAmount.toLocaleString()}`
+                  )}
+                </td>
+                <td className={`border p-2 text-right font-semibold ${balanceColor}`}>
+                  KSh {Math.abs(balance).toLocaleString()}
+                  <span className="text-xs ml-1">({balance === 0 ? 'Paid' : balance < 0 ? 'Overpaid' : 'Due'})</span>
                 </td>
                 <td className="border p-2">{new Date(contrib.contribution_date).toLocaleDateString()}</td>
                 <td className="border p-2">
@@ -238,7 +267,8 @@ export default function AdminFinancialDashboard() {
                   )}
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>

@@ -1,8 +1,6 @@
 import { prisma } from './prisma';
 
-/**
- * Get or create registration fee for a member
- */
+// Get or create registration fee for a member
 export async function getOrCreateRegistrationFee(userId, expectedAmount = 2000) {
   let fee = await prisma.registrationFee.findUnique({
     where: { user_id: userId },
@@ -22,9 +20,7 @@ export async function getOrCreateRegistrationFee(userId, expectedAmount = 2000) 
   return fee;
 }
 
-/**
- * Calculate total contribution for a member by type
- */
+// Calculate total contribution for a member by type
 export async function getTotalContributionByType(userId, type) {
   const result = await prisma.contribution.aggregate({
     where: {
@@ -39,10 +35,9 @@ export async function getTotalContributionByType(userId, type) {
   return result._sum.amount || 0;
 }
 
-/**
- * Calculate member financial summary
- * Returns: { registrationFee, monthlyContribution, socialWelfare, specialContribution, totalContributed, totalExpected, difference }
- */
+// Calculate member financial summary
+// Returns: { registrationFee, monthlyContribution, socialWelfare, specialContribution, totalContributed, totalExpected, difference }
+
 export async function getMemberFinancialSummary(userId) {
   const regFee = await getOrCreateRegistrationFee(userId);
   
@@ -73,9 +68,7 @@ export async function getMemberFinancialSummary(userId) {
   };
 }
 
-/**
- * Create a new contribution entry
- */
+//Create a new contribution entry
 export async function createContribution(userId, data) {
   const {
     amount,
@@ -104,9 +97,7 @@ export async function createContribution(userId, data) {
   });
 }
 
-/**
- * Update contribution status
- */
+// Update contribution status
 export async function updateContributionStatus(contributionId, status, amountContributed = null) {
   const updateData = { status };
   if (amountContributed !== null) {
@@ -119,9 +110,7 @@ export async function updateContributionStatus(contributionId, status, amountCon
   });
 }
 
-/**
- * Get all contributions for a member
- */
+//Get all contributions for a member
 export async function getMemberContributions(userId, limit = 100, offset = 0) {
   return prisma.contribution.findMany({
     where: { user_id: userId },
@@ -136,9 +125,7 @@ export async function getMemberContributions(userId, limit = 100, offset = 0) {
   });
 }
 
-/**
- * Get all contributions for a specific type across all members (admin view)
- */
+//Get all contributions for a specific type across all members (admin view)
 export async function getContributionsByType(type, limit = 100, offset = 0) {
   return prisma.contribution.findMany({
     where: { contribution_type: type },
@@ -156,10 +143,8 @@ export async function getContributionsByType(type, limit = 100, offset = 0) {
   });
 }
 
-/**
- * Generate financial report for all members
- * Returns array of { memberNo, name, email, phone, expectedContribution, totalContributed, difference }
- */
+//Generate financial report for all members
+//Returns array of { memberNo, name, email, phone, expectedContribution, totalContributed, difference }
 export async function generateFinancialReport() {
   const users = await prisma.user.findMany({
     where: { role: 'MEMBER' },
@@ -193,9 +178,7 @@ export async function generateFinancialReport() {
   return report;
 }
 
-/**
- * Convert financial report to CSV string
- */
+//Convert financial report to CSV string
 export function reportToCSV(report) {
   const headers = [
     'Member No.',
