@@ -8,7 +8,13 @@ export async function GET(req, { params }) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    // Ensure params is resolved (Next.js 15+)
+    const resolvedParams = await Promise.resolve(params);
+    const { id } = resolvedParams;
+
+    if (!id) {
+      return Response.json({ error: 'Contribution ID is required' }, { status: 400 });
+    }
 
     const contribution = await prisma.contribution.findUnique({
       where: { id },
@@ -45,9 +51,16 @@ export async function PATCH(req, { params }) {
       return Response.json({ error: 'Unauthorized. Only admins can edit contributions.' }, { status: 401 });
     }
 
-    const { id } = params;
+    // Ensure params is resolved (Next.js 15+)
+    const resolvedParams = await Promise.resolve(params);
+    const { id } = resolvedParams;
+
+    if (!id) {
+      return Response.json({ error: 'Contribution ID is required' }, { status: 400 });
+    }
+
     const body = await req.json();
-    const { amount, status, notes, payment_method, transaction_ref } = body;
+    const { amount, expectedAmount, status, notes, payment_method, transaction_ref } = body;
 
     // Fetch existing contribution to verify it exists
     const existing = await prisma.contribution.findUnique({ where: { id } });
@@ -58,6 +71,7 @@ export async function PATCH(req, { params }) {
     // Build update data
     const updateData = {};
     if (amount !== undefined) updateData.amount = parseFloat(amount);
+    if (expectedAmount !== undefined) updateData.expectedAmount = parseFloat(expectedAmount);
     if (status !== undefined) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
     if (payment_method !== undefined) updateData.payment_method = payment_method;
@@ -80,12 +94,18 @@ export async function PATCH(req, { params }) {
 
 export async function DELETE(req, { params }) {
   try {
-    const session = await getSession();
+    const session = await getCurrentSession();
     if (!session || session.user.role !== 'ADMIN') {
       return Response.json({ error: 'Unauthorized. Only admins can delete contributions.' }, { status: 401 });
     }
 
-    const { id } = params;
+    // Ensure params is resolved (Next.js 15+)
+    const resolvedParams = await Promise.resolve(params);
+    const { id } = resolvedParams;
+
+    if (!id) {
+      return Response.json({ error: 'Contribution ID is required' }, { status: 400 });
+    }
 
     const existing = await prisma.contribution.findUnique({ where: { id } });
     if (!existing) {

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function ContributionForm({ memberId, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [expectedAmounts, setExpectedAmounts] = useState({});
   const [formData, setFormData] = useState({
     amount: '',
     contribution_type: 'MONTHLY_CONTRIBUTION',
@@ -15,10 +16,34 @@ export default function ContributionForm({ memberId, onSuccess }) {
     notes: '',
   });
 
+  // Fetch expected amounts for each contribution type
+  useEffect(() => {
+    async function fetchExpectedAmounts() {
+      try {
+        const res = await fetch(`/api/financial/summary/${memberId}`);
+        const data = await res.json();
+        if (res.ok) {
+          setExpectedAmounts({
+            MONTHLY_CONTRIBUTION: data.data.monthlyContribution || 0,
+            SOCIAL_WELFARE: 0, // No default for social welfare
+            SPECIAL: 0, // No default for special
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch expected amounts:', err);
+      }
+    }
+    if (memberId) fetchExpectedAmounts();
+  }, [memberId]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  const expectedAmount = expectedAmounts[formData.contribution_type] || 0;
+  const actualAmount = parseFloat(formData.amount) || 0;
+  const balance = expectedAmount - actualAmount;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,7 +55,10 @@ export default function ContributionForm({ memberId, onSuccess }) {
       const res = await fetch('/api/financial/contributions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          expectedAmount,
+        }),
       });
 
       const data = await res.json();
@@ -93,7 +121,20 @@ export default function ContributionForm({ memberId, onSuccess }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Amount (KSh) *</label>
+            <label className="block text-sm font-medium mb-1">Expected Amount (KSh) *</label>
+            <input
+              type="text"
+              value={expectedAmount.toLocaleString()}
+              disabled
+              className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed"
+            />
+            <p className="text-xs text-gray-500 mt-1">Set by administrator</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Amount Currently Contributing (KSh) *</label>
             <input
               type="number"
               name="amount"
@@ -105,6 +146,18 @@ export default function ContributionForm({ memberId, onSuccess }) {
               placeholder="0.00"
               className="w-full border rounded px-3 py-2"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Balance (KSh)</label>
+            <div className={`w-full border rounded px-3 py-2 font-bold ${
+              balance === 0 ? 'bg-green-50 text-green-700' : 
+              balance < 0 ? 'bg-blue-50 text-blue-700' : 
+              'bg-yellow-50 text-yellow-700'
+            }`}>
+              {Math.abs(balance).toLocaleString()}
+              <span className="text-xs ml-1">({balance === 0 ? 'Paid' : balance < 0 ? 'Overpaid' : 'Due'})</span>
+            </div>
           </div>
         </div>
 
