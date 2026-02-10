@@ -6,10 +6,12 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import AdminMemberForm from '@/app/components/AdminMemberForm';
 import MemberDetailModal from '@/app/components/MemberDetailModal';
+import AdminFinancialDashboard from '@/app/components/AdminFinancialDashboard';
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState('overview');
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [members, setMembers] = useState([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(true);
@@ -113,6 +115,32 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Navigation Tabs */}
+        <div className="border-b border-gray-200 mb-8">
+          <nav className="flex space-x-8" aria-label="Tabs">
+            {[
+              { id: 'overview', label: 'Overview', icon: '📊' },
+              { id: 'members', label: 'Members', icon: '👥' },
+              { id: 'financial', label: 'Financial Records', icon: '💰' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-1 py-4 font-medium text-sm border-b-2 transition ${
+                  activeTab === tab.id
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {tab.icon} {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+        <div>
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
@@ -193,8 +221,13 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+        </div>
+        )}
 
-        {/* Members Section */}
+        {/* Members Tab */}
+        {activeTab === 'members' && (
+        <div>
+          {/* Members Section */}
         <div className="bg-white rounded-lg shadow border border-gray-200">
           <div className="p-6 border-b border-gray-200">
             <div className="flex justify-between items-center mb-4">
@@ -320,6 +353,13 @@ export default function AdminDashboard() {
             )}
           </div>
         </div>
+        </div>
+        )}
+
+        {/* Financial Records Tab */}
+        {activeTab === 'financial' && (
+          <AdminFinancialDashboard />
+        )}
       </main>
 
       {/* Member Form Modal */}

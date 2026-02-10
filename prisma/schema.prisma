@@ -17,8 +17,15 @@ enum Role {
 }
 
 enum ContributionType {
-  MONTHLY
+  MONTHLY_CONTRIBUTION
+  SOCIAL_WELFARE
   SPECIAL
+}
+
+enum ContributionStatus {
+  PENDING
+  PARTIAL
+  PAID
 }
 
 // Loan entities removed — replaced by group assets/investments
@@ -43,6 +50,7 @@ model User {
   updated_at        DateTime       @updatedAt
 
   contributions     Contribution[]
+  registrationFee   RegistrationFee?
   assets            Asset[]
   eventsCreated     Event[]        @relation("EventsCreated")
   recordedContribs  Contribution[] @relation("RecordedContributions")
@@ -57,20 +65,39 @@ model Contribution {
   id                 String           @id @default(uuid()) @db.Uuid
   user_id            String           @db.Uuid
   amount             Decimal          @db.Decimal(10,2)
+  expectedAmount     Decimal?         @db.Decimal(10,2)
   contribution_date  DateTime
   contribution_type  ContributionType
+  status             ContributionStatus @default(PENDING)
   payment_method     String?
   transaction_ref    String?
   recorded_by        String?          @db.Uuid
   investment_id      String?          @db.Uuid
   notes              String?
   created_at         DateTime         @default(now())
+  updated_at         DateTime         @updatedAt
 
   user               User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   recordedBy         User?            @relation("RecordedContributions", fields: [recorded_by], references: [id])
   investment         AssetInvestment? @relation("InvestmentContributions", fields: [investment_id], references: [id])
 
   @@map("contributions")
+}
+
+model RegistrationFee {
+  id              String           @id @default(uuid()) @db.Uuid
+  user_id         String           @unique @db.Uuid
+  expectedAmount  Decimal          @db.Decimal(10,2)
+  amountPaid      Decimal          @db.Decimal(10,2) @default(0)
+  status          ContributionStatus @default(PENDING)
+  paidDate        DateTime?
+  notes           String?
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+
+  user            User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("registration_fees")
 }
 
 model Asset {

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import ContributionForm from '@/app/components/ContributionForm';
+import MemberFinancialSummary from '@/app/components/MemberFinancialSummary';
 
 export default function MemberDashboard() {
   const { data: session, status } = useSession();
@@ -164,14 +166,9 @@ export default function MemberDashboard() {
 
         {/* Contributions Tab */}
         {activeTab === 'contributions' && (
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Your Contributions
-            </h2>
-            <p className="text-gray-600">
-              No contributions yet. Once you make a contribution, it will appear
-              here.
-            </p>
+          <div className="space-y-8">
+            <MemberFinancialSummary memberId={userProfile?.id} />
+            <ContributionForm memberId={userProfile?.id} />
           </div>
         )}
 
