@@ -74,7 +74,7 @@ export async function POST(req) {
     } = body;
 
     // Validate required fields
-    if (!amount || !contribution_type || !contribution_date) {
+    if (amount === undefined || amount === null || !contribution_type || !contribution_date) {
       return Response.json(
         { error: 'Missing required fields: amount, contribution_type, contribution_date' },
         { status: 400 }

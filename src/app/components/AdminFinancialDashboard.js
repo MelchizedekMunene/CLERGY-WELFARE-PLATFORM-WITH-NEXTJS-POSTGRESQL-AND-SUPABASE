@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import SetExpectedContributionForm from './SetExpectedContributionForm';
 
 export default function AdminFinancialDashboard() {
   const [contributions, setContributions] = useState([]);
@@ -129,6 +130,9 @@ export default function AdminFinancialDashboard() {
           {error}
         </div>
       )}
+
+      {/* Set Expected Contribution Form */}
+      <SetExpectedContributionForm onSuccess={fetchContributions} />
 
       <div className="mb-6">
         <label className="block text-sm font-medium mb-2">Filter by Type</label>

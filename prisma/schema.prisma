@@ -52,6 +52,8 @@ model User {
   contributions     Contribution[]
   registrationFee   RegistrationFee?
   assets            Asset[]
+  expectedContributions     ExpectedContribution[]
+  expectedContributionsSet  ExpectedContribution[] @relation("ExpectedContributionsSetBy")
   eventsCreated     Event[]        @relation("EventsCreated")
   recordedContribs  Contribution[] @relation("RecordedContributions")
   uploadedDocuments AssetDocument[]
@@ -115,6 +117,27 @@ model Asset {
   createdBy     User              @relation(fields: [created_by], references: [id])
 
   @@map("assets")
+}
+
+model ExpectedContribution {
+  id                String           @id @default(uuid()) @db.Uuid
+  user_id           String           @db.Uuid
+  contribution_type ContributionType
+  expected_amount   Decimal          @db.Decimal(10,2)
+  effective_from    DateTime
+  effective_until   DateTime?
+  notes             String?
+  set_by            String?          @db.Uuid
+  created_at        DateTime         @default(now())
+  updated_at        DateTime         @updatedAt
+
+  user              User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  setBy             User?            @relation("ExpectedContributionsSetBy", fields: [set_by], references: [id])
+
+  @@unique([user_id, contribution_type, effective_from])
+  @@index([user_id])
+  @@index([contribution_type])
+  @@map("expected_contributions")
 }
 
 model AssetDocument {

@@ -16,21 +16,26 @@ export default function ContributionForm({ memberId, onSuccess }) {
     notes: '',
   });
 
-  // Fetch expected amounts for each contribution type
+  // Fetch expected amounts for each contribution type from the new system
   useEffect(() => {
     async function fetchExpectedAmounts() {
       try {
-        const res = await fetch(`/api/financial/summary/${memberId}`);
+        const res = await fetch(`/api/financial/expected-contributions?memberId=${memberId}`);
         const data = await res.json();
         if (res.ok) {
-          setExpectedAmounts({
-            MONTHLY_CONTRIBUTION: data.data.monthlyContribution || 0,
-            SOCIAL_WELFARE: 0, // No default for social welfare
-            SPECIAL: 0, // No default for special
+          setExpectedAmounts(data.data || {
+            MONTHLY_CONTRIBUTION: 0,
+            SOCIAL_WELFARE: 0,
+            SPECIAL: 0,
           });
         }
       } catch (err) {
         console.error('Failed to fetch expected amounts:', err);
+        setExpectedAmounts({
+          MONTHLY_CONTRIBUTION: 0,
+          SOCIAL_WELFARE: 0,
+          SPECIAL: 0,
+        });
       }
     }
     if (memberId) fetchExpectedAmounts();
@@ -57,6 +62,7 @@ export default function ContributionForm({ memberId, onSuccess }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          amount: parseFloat(formData.amount),
           expectedAmount,
         }),
       });
@@ -80,6 +86,8 @@ export default function ContributionForm({ memberId, onSuccess }) {
       if (onSuccess) {
         onSuccess(data.data);
       }
+
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -121,14 +129,16 @@ export default function ContributionForm({ memberId, onSuccess }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Expected Amount (KSh) *</label>
+            <label className="block text-sm font-medium mb-1">Expected Amount (KSh)</label>
             <input
               type="text"
-              value={expectedAmount.toLocaleString()}
+              value={expectedAmount > 0 ? expectedAmount.toLocaleString() : 'Not set'}
               disabled
               className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed"
             />
-            <p className="text-xs text-gray-500 mt-1">Set by administrator</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {expectedAmount > 0 ? 'Set by administrator' : 'No expected amount set'}
+            </p>
           </div>
         </div>
 
@@ -153,10 +163,15 @@ export default function ContributionForm({ memberId, onSuccess }) {
             <div className={`w-full border rounded px-3 py-2 font-bold ${
               balance === 0 ? 'bg-green-50 text-green-700' : 
               balance < 0 ? 'bg-blue-50 text-blue-700' : 
+              expectedAmount === 0 ? 'bg-gray-50 text-gray-700' :
               'bg-yellow-50 text-yellow-700'
             }`}>
-              {Math.abs(balance).toLocaleString()}
-              <span className="text-xs ml-1">({balance === 0 ? 'Paid' : balance < 0 ? 'Overpaid' : 'Due'})</span>
+              {expectedAmount === 0 ? 'N/A' : Math.abs(balance).toLocaleString()}
+              {expectedAmount > 0 && (
+                <span className="text-xs ml-1">
+                  ({balance === 0 ? 'Paid' : balance < 0 ? 'Overpaid' : 'Due'})
+                </span>
+              )}
             </div>
           </div>
         </div>
