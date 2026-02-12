@@ -131,6 +131,14 @@ export default function AdminFinancialDashboard() {
         </div>
       )}
 
+      {/* Set Expected Contribution Form - Section Header */}
+      <div className="mb-8 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
+        <h3 className="text-lg font-semibold text-blue-900 mb-2">💡 Setup Member Expectations</h3>
+        <p className="text-blue-800 text-sm">
+          Define how much each member is expected to contribute. Members will see these amounts when they record contributions, helping them understand what they owe.
+        </p>
+      </div>
+
       {/* Set Expected Contribution Form */}
       <SetExpectedContributionForm onSuccess={fetchContributions} />
 

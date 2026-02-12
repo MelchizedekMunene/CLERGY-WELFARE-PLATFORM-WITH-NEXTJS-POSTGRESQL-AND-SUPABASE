@@ -12,6 +12,11 @@ export default function MemberDashboard() {
   const [userProfile, setUserProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -153,12 +158,19 @@ export default function MemberDashboard() {
             {/* Quick Info */}
             <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Quick Summary
+                🎯 Welcome to Your Member Dashboard
               </h2>
-                <p className="text-gray-600">
-                Your member dashboard is set up and ready to use. Explore the
-                tabs above to view your contributions, assets, upcoming events,
-                and manage your profile.
+                <p className="text-gray-600 mb-4">
+                Your member dashboard is set up and ready to use. Here's what you can do:
+              </p>
+              <ul className="space-y-2 text-gray-600 text-sm">
+                <li>✅ <strong>Contributions Tab:</strong> View your financial summary and record your contributions</li>
+                <li>✅ <strong>Assets Tab:</strong> See details about group investments and assets</li>
+                <li>✅ <strong>Events Tab:</strong> Stay informed about upcoming community events</li>
+                <li>✅ <strong>Profile Tab:</strong> Manage your personal information</li>
+              </ul>
+              <p className="text-gray-700 font-medium mt-4 pt-4 border-t">
+                💰 <strong>Getting Started:</strong> Go to the <strong>Contributions</strong> tab to see your expected obligations and record contributions.
               </p>
             </div>
           </div>
@@ -167,8 +179,37 @@ export default function MemberDashboard() {
         {/* Contributions Tab */}
         {activeTab === 'contributions' && (
           <div className="space-y-8">
-            <MemberFinancialSummary memberId={userProfile?.id} />
-            <ContributionForm memberId={userProfile?.id} />
+            {/* Refresh Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={handleRefresh}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm flex items-center gap-2"
+              >
+                🔄 Refresh Data
+              </button>
+            </div>
+
+            {/* Info Card */}
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg border border-green-200 shadow-sm">
+              <h3 className="font-semibold text-gray-900 mb-2">📋 How It Works</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="inline-block bg-green-500 text-white rounded-full w-6 h-6 text-center font-bold text-xs leading-6">1</span>
+                  <p className="mt-2 text-gray-700"><strong>Expectations Set</strong> by your admin</p>
+                </div>
+                <div className="text-center">→</div>
+                <div>
+                  <span className="inline-block bg-green-500 text-white rounded-full w-6 h-6 text-center font-bold text-xs leading-6">2</span>
+                  <p className="mt-2 text-gray-700"><strong>You Record</strong> your contribution</p>
+                </div>
+              </div>
+              <p className="text-gray-600 mt-3 text-xs">
+                The balance will show you how much you still owe or if you've paid more than expected.
+              </p>
+            </div>
+
+            <MemberFinancialSummary memberId={userProfile?.id} key={refreshKey} />
+            <ContributionForm memberId={userProfile?.id} onSuccess={handleRefresh} refreshKey={refreshKey} />
           </div>
         )}
 

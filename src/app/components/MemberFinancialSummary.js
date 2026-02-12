@@ -2,31 +2,32 @@
 
 import { useEffect, useState } from 'react';
 
-export default function MemberFinancialSummary({ memberId }) {
+export default function MemberFinancialSummary({ memberId, refreshKey = 0 }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    async function fetchSummary() {
-      try {
-        const res = await fetch(`/api/financial/summary/${memberId}`);
-        const data = await res.json();
+  const fetchSummary = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/financial/summary/${memberId}?t=${Date.now()}`);
+      const data = await res.json();
 
-        if (!res.ok) {
-          throw new Error(data.error || 'Failed to load summary');
-        }
-
-        setSummary(data.data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load summary');
       }
-    }
 
+      setSummary(data.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchSummary();
-  }, [memberId]);
+  }, [memberId, refreshKey]);
 
   if (loading) {
     return <div className="text-center text-gray-500">Loading...</div>;
@@ -43,6 +44,9 @@ export default function MemberFinancialSummary({ memberId }) {
   const statusColor = summary.difference === 0 ? 'green' : summary.difference < 0 ? 'blue' : 'yellow';
   const statusText = summary.difference === 0 ? 'PAID' : summary.difference < 0 ? 'OVERPAID' : 'PENDING';
 
+  // Check if any expected amounts have been set
+  const hasExpectedAmounts = summary.monthlyExpected > 0 || summary.socialExpected > 0 || summary.specialExpected > 0;
+
   return (
     <div className="bg-white p-6 rounded-lg shadow">
       <h2 className="text-2xl font-bold mb-6 flex items-center justify-between">
@@ -51,6 +55,15 @@ export default function MemberFinancialSummary({ memberId }) {
           {statusText}
         </span>
       </h2>
+
+      {!hasExpectedAmounts && (
+        <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
+          <p className="text-blue-900 font-medium">ℹ️ Awaiting Admin Setup</p>
+          <p className="text-blue-700 text-sm mt-1">
+            Your administrator hasn't set expected contribution amounts yet. Once they do, your expected obligations will appear below.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="border-l-4 border-blue-500 pl-4">

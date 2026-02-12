@@ -9,7 +9,7 @@ export async function PATCH(req, { params }) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { contributionId } = params;
+    const { contributionId } = await params;
     const body = await req.json();
 
     // Check if contribution exists
@@ -46,7 +46,7 @@ export async function DELETE(req, { params }) {
       return Response.json({ error: 'Unauthorized - Admin only' }, { status: 401 });
     }
 
-    const { contributionId } = params;
+    const { contributionId } = await params;
 
     // Check if contribution exists
     const contribution = await prisma.contribution.findUnique({

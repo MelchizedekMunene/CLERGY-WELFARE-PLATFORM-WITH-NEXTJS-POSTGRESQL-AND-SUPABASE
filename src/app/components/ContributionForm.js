@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-export default function ContributionForm({ memberId, onSuccess }) {
+export default function ContributionForm({ memberId, onSuccess, refreshKey = 0 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -17,29 +17,30 @@ export default function ContributionForm({ memberId, onSuccess }) {
   });
 
   // Fetch expected amounts for each contribution type from the new system
-  useEffect(() => {
-    async function fetchExpectedAmounts() {
-      try {
-        const res = await fetch(`/api/financial/expected-contributions?memberId=${memberId}`);
-        const data = await res.json();
-        if (res.ok) {
-          setExpectedAmounts(data.data || {
-            MONTHLY_CONTRIBUTION: 0,
-            SOCIAL_WELFARE: 0,
-            SPECIAL: 0,
-          });
-        }
-      } catch (err) {
-        console.error('Failed to fetch expected amounts:', err);
-        setExpectedAmounts({
+  const fetchExpectedAmounts = async () => {
+    try {
+      const res = await fetch(`/api/financial/expected-contribution?memberId=${memberId}&t=${Date.now()}`);
+      const data = await res.json();
+      if (res.ok) {
+        setExpectedAmounts(data.data || {
           MONTHLY_CONTRIBUTION: 0,
           SOCIAL_WELFARE: 0,
           SPECIAL: 0,
         });
       }
+    } catch (err) {
+      console.error('Failed to fetch expected amounts:', err);
+      setExpectedAmounts({
+        MONTHLY_CONTRIBUTION: 0,
+        SOCIAL_WELFARE: 0,
+        SPECIAL: 0,
+      });
     }
+  };
+
+  useEffect(() => {
     if (memberId) fetchExpectedAmounts();
-  }, [memberId]);
+  }, [memberId, refreshKey]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -87,6 +88,9 @@ export default function ContributionForm({ memberId, onSuccess }) {
         onSuccess(data.data);
       }
 
+      // Refresh expected amounts to reflect any admin updates
+      await fetchExpectedAmounts();
+
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message);
@@ -130,14 +134,17 @@ export default function ContributionForm({ memberId, onSuccess }) {
 
           <div>
             <label className="block text-sm font-medium mb-1">Expected Amount (KSh)</label>
-            <input
-              type="text"
-              value={expectedAmount > 0 ? expectedAmount.toLocaleString() : 'Not set'}
-              disabled
-              className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              {expectedAmount > 0 ? 'Set by administrator' : 'No expected amount set'}
+            <div className={`w-full border rounded px-3 py-2 font-semibold ${
+              expectedAmount > 0 
+                ? 'bg-gray-100 text-gray-700 cursor-not-allowed' 
+                : 'bg-yellow-50 text-yellow-700 border-yellow-300'
+            }`}>
+              {expectedAmount > 0 ? expectedAmount.toLocaleString() : 'Not set yet'}
+            </div>
+            <p className={`text-xs mt-1 ${expectedAmount > 0 ? 'text-gray-500' : 'text-yellow-600'}`}>
+              {expectedAmount > 0 
+                ? '✓ Set by administrator' 
+                : '⚠️ Ask your admin to set your expectation. You can still record contributions.'}
             </p>
           </div>
         </div>

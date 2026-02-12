@@ -8,7 +8,7 @@ export async function GET(req, { params }) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { memberId } = params;
+    const { memberId } = await params;
 
     // Members can only view their own summary
     if (session.user.role === 'MEMBER' && memberId !== session.user.id) {

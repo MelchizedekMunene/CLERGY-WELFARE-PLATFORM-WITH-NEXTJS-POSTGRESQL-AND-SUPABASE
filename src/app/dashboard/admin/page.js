@@ -221,6 +221,29 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Workflow Guide */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200 shadow-sm mb-8">
+          <h3 className="font-semibold text-gray-900 mb-4">🚀 Your Admin Workflow</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded-lg">
+              <span className="inline-block bg-blue-500 text-white rounded-full w-8 h-8 text-center font-bold text-sm leading-8 mb-2">1</span>
+              <h4 className="font-semibold text-gray-900 mb-2">Set Expectations</h4>
+              <p className="text-sm text-gray-600">Go to Financial Records tab → Set Expected Contribution. Select members and define their contribution amounts.</p>
+            </div>
+            <div className="text-center flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+            </div>
+            <div className="bg-white p-4 rounded-lg">
+              <span className="inline-block bg-blue-500 text-white rounded-full w-8 h-8 text-center font-bold text-sm leading-8 mb-2">2</span>
+              <h4 className="font-semibold text-gray-900 mb-2">Members Contribute</h4>
+              <p className="text-sm text-gray-600">Members will see the expectations in their dashboard and record their contributions. The system calculates what they owe.</p>
+            </div>
+          </div>
+          <p className="text-sm text-blue-800 mt-4 pt-4 border-t border-blue-200">
+            ℹ️ <strong>Tip:</strong> Members receive no notification when you set expectations. Consider sending them a message or email to let them know.
+          </p>
+        </div>
         </div>
         )}
 

@@ -1,15 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import MemberMultiSelect from './MemberMultiSelect';
 
 export default function SetExpectedContributionForm({ onSuccess }) {
   const [loading, setLoading] = useState(false);
-  const [membersLoading, setMembersLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [members, setMembers] = useState([]);
-  const [selectedMembers, setSelectedMembers] = useState([]);
-  const [selectAll, setSelectAll] = useState(false);
   const [formData, setFormData] = useState({
     contribution_type: 'MONTHLY_CONTRIBUTION',
     expected_amount: '',
@@ -17,48 +14,11 @@ export default function SetExpectedContributionForm({ onSuccess }) {
     effective_until: '',
     notes: '',
   });
-
-  useEffect(() => {
-    fetchMembers();
-  }, []);
-
-  const fetchMembers = async () => {
-    try {
-      setMembersLoading(true);
-      const res = await fetch('/api/members');
-      const data = await res.json();
-      if (res.ok) {
-        setMembers(data.members || []);
-      }
-    } catch (err) {
-      console.error('Failed to fetch members:', err);
-    } finally {
-      setMembersLoading(false);
-    }
-  };
+  const [selectedMembers, setSelectedMembers] = useState([]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleMemberToggle = (memberId) => {
-    setSelectedMembers(prev => {
-      if (prev.includes(memberId)) {
-        return prev.filter(id => id !== memberId);
-      } else {
-        return [...prev, memberId];
-      }
-    });
-  };
-
-  const handleSelectAll = () => {
-    if (selectAll) {
-      setSelectedMembers([]);
-    } else {
-      setSelectedMembers(members.map(m => m.id));
-    }
-    setSelectAll(!selectAll);
   };
 
   const handleSubmit = async (e) => {
@@ -108,7 +68,6 @@ export default function SetExpectedContributionForm({ onSuccess }) {
         notes: '',
       });
       setSelectedMembers([]);
-      setSelectAll(false);
 
       if (onSuccess) {
         onSuccess(data.data);
@@ -139,53 +98,11 @@ export default function SetExpectedContributionForm({ onSuccess }) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Member Selection */}
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <label className="block text-sm font-medium">Select Members *</label>
-            <button
-              type="button"
-              onClick={handleSelectAll}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              {selectAll ? 'Deselect All' : 'Select All'}
-            </button>
-          </div>
-          
-          <div className="border rounded-lg p-4 max-h-60 overflow-y-auto bg-gray-50">
-            {membersLoading ? (
-              <p className="text-gray-500 text-sm">Loading members...</p>
-            ) : members.length === 0 ? (
-              <p className="text-gray-500 text-sm">No members found</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {members.map(member => (
-                  <label
-                    key={member.id}
-                    className="flex items-center space-x-2 p-2 hover:bg-white rounded cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedMembers.includes(member.id)}
-                      onChange={() => handleMemberToggle(member.id)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <span className="text-sm">
-                      {member.full_name}
-                      <span className="text-gray-500 ml-1">({member.email})</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          {selectedMembers.length > 0 && (
-            <p className="text-sm text-gray-600 mt-2">
-              {selectedMembers.length} member{selectedMembers.length > 1 ? 's' : ''} selected
-            </p>
-          )}
-        </div>
+        {/* Member Selection - Using Dropdown Selector */}
+        <MemberMultiSelect 
+          selectedMembers={selectedMembers}
+          onSelectionChange={setSelectedMembers}
+        />
 
         {/* Contribution Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -263,7 +180,7 @@ export default function SetExpectedContributionForm({ onSuccess }) {
 
         <button
           type="submit"
-          disabled={loading || membersLoading || selectedMembers.length === 0}
+          disabled={loading || selectedMembers.length === 0}
           className="w-full md:w-auto bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Setting...' : `Set Expected Contribution for ${selectedMembers.length || 0} Member(s)`}
