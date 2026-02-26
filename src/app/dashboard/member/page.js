@@ -99,11 +99,10 @@ export default function MemberDashboard() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-1 py-4 font-medium text-sm border-b-2 transition ${
-                  activeTab === tab.id
+                className={`px-1 py-4 font-medium text-sm border-b-2 transition ${activeTab === tab.id
                     ? 'border-green-500 text-green-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                  }`}
               >
                 {tab.icon} {tab.label}
               </button>
@@ -115,52 +114,12 @@ export default function MemberDashboard() {
         {activeTab === 'overview' && (
           <div className="space-y-8">
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Total Contributions</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">
-                      KES 0
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <span className="text-xl">💰</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Group Assets</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">0</p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-xl">🏦</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Upcoming Events</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">0</p>
-                  </div>
-                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                    <span className="text-xl">📅</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Quick Info */}
             <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 🎯 Welcome to Your Member Dashboard
               </h2>
-                <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 mb-4">
                 Your member dashboard is set up and ready to use. Here's what you can do:
               </p>
               <ul className="space-y-2 text-gray-600 text-sm">
@@ -173,6 +132,9 @@ export default function MemberDashboard() {
                 💰 <strong>Getting Started:</strong> Go to the <strong>Contributions</strong> tab to see your expected obligations and record contributions.
               </p>
             </div>
+
+            {/* Financial Summary */}
+            <MemberFinancialSummary memberId={userProfile?.id} key={refreshKey} />
           </div>
         )}
 

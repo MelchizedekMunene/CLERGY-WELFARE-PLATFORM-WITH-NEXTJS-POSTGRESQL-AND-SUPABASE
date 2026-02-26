@@ -55,9 +55,8 @@ export default function SetExpectedContributionForm({ onSuccess }) {
         throw new Error(data.error || 'Failed to set expected contribution');
       }
 
-      const memberNames = selectedMembers.length === 1
-        ? members.find(m => m.id === selectedMembers[0])?.full_name
-        : `${selectedMembers.length} members`;
+      // selectedMembers is an array of IDs — use the API response message or fall back to count
+      const memberNames = data.message || `${selectedMembers.length} member(s)`;
 
       setSuccess(`Expected contribution set successfully for ${memberNames}!`);
       setFormData({

@@ -91,7 +91,7 @@ model RegistrationFee {
   user_id         String           @unique @db.Uuid
   expectedAmount  Decimal          @db.Decimal(10,2)
   amountPaid      Decimal          @db.Decimal(10,2) @default(0)
-  status          ContributionStatus @default(PENDING)
+  status          ContributionStatus @default(PAID)
   paidDate        DateTime?
   notes           String?
   created_at      DateTime         @default(now())

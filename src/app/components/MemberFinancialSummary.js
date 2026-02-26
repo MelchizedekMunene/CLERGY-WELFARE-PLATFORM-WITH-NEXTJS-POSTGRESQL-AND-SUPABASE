@@ -66,12 +66,6 @@ export default function MemberFinancialSummary({ memberId, refreshKey = 0 }) {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div className="border-l-4 border-blue-500 pl-4">
-          <p className="text-gray-600 text-sm">Registration Fee</p>
-          <p className="text-2xl font-bold text-gray-900">KSh {summary.registrationFee.toLocaleString()}</p>
-          <p className="text-xs text-gray-500">Status: {summary.registrationStatus}</p>
-        </div>
-
         <div className="border-l-4 border-purple-500 pl-4">
           <p className="text-gray-600 text-sm">Monthly Contribution</p>
           <p className="text-2xl font-bold text-gray-900">KSh {summary.monthlyContribution.toLocaleString()}</p>

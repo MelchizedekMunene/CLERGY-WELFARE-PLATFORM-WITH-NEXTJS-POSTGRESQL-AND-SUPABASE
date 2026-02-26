@@ -7,6 +7,8 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 
 export const authOptions = {
+  // Ensure NEXTAUTH_URL is set for proper callback handling
+  trustHost: true,
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -27,20 +29,26 @@ export const authOptions = {
           }
 
           // STEP 2: Find user by email in database
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email.toLowerCase() },
-            select: {
-              id: true,
-              email: true,
-              password: true,
-              full_name: true,
-              phone: true,
-              church_name: true,
-              role: true,
-              is_active: true,
-              registration_date: true,
-            },
-          });
+          let user;
+          try {
+            user = await prisma.user.findUnique({
+              where: { email: credentials.email.toLowerCase() },
+              select: {
+                id: true,
+                email: true,
+                password: true,
+                full_name: true,
+                phone: true,
+                church_name: true,
+                role: true,
+                is_active: true,
+                registration_date: true,
+              },
+            });
+          } catch (dbError) {
+            console.error('Database connection error:', dbError);
+            throw new Error('Database connection failed. Please try again later.');
+          }
 
           // STEP 3: Check if user exists
           if (!user) {

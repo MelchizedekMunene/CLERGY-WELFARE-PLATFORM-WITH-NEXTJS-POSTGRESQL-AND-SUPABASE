@@ -108,12 +108,15 @@ export async function getOrCreateRegistrationFee(userId, expectedAmount = 2000) 
   });
 
   if (!fee) {
+    // Account creation implies the registration fee has been paid,
+    // so we record it as PAID with the full amount already settled.
     fee = await prisma.registrationFee.create({
       data: {
         user_id: userId,
         expectedAmount: expectedAmount,
-        amountPaid: 0,
-        status: 'PENDING',
+        amountPaid: expectedAmount,
+        status: 'PAID',
+        paidDate: new Date(),
       },
     });
   }
@@ -194,8 +197,9 @@ export async function getMemberFinancialSummary(userId) {
     Number(specialExpected)
   );
 
-  const totalExpected = Number(regFee.expectedAmount) + 
-    monthlyExpectedAmount + 
+  // Registration fee is excluded from totalExpected — it is considered
+  // settled at the point of account creation and is tracked separately.
+  const totalExpected = monthlyExpectedAmount + 
     socialExpectedAmount + 
     specialExpectedAmount;
 
