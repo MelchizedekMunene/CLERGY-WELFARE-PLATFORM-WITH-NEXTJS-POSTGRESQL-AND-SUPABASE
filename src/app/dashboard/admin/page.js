@@ -1,4 +1,4 @@
-//Admin Dashboard Overview and Management
+//Admin Financial Dashboard Overview and Management
 'use client';
 
 import { useState, useEffect } from 'react';

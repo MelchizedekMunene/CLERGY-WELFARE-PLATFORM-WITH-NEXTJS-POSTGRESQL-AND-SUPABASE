@@ -10,6 +10,9 @@ export default function AdminFinancialDashboard() {
   const [filter, setFilter] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
+  const [savingId, setSavingId] = useState(null);
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState('');
 
   useEffect(() => {
     fetchContributions();
@@ -38,12 +41,15 @@ export default function AdminFinancialDashboard() {
   };
 
   const handleEditClick = (contribution) => {
+    setSaveError('');
+    setSaveSuccess('');
     setEditingId(contribution.id);
     setEditData({
       amount: Number(contribution.amount) || 0,
       expectedAmount: Number(contribution.expectedAmount) || Number(contribution.amount) || 0,
-      status: contribution.status,
-      notes: contribution.notes,
+      status: contribution.status || 'PENDING',
+      // Ensure notes is always a string, never null/undefined
+      notes: contribution.notes ?? '',
     });
   };
 
@@ -52,11 +58,25 @@ export default function AdminFinancialDashboard() {
   };
 
   const handleSaveEdit = async (contributionId) => {
+    setSaveError('');
+    setSaveSuccess('');
+    setSavingId(contributionId);
+
     try {
+      // Build a clean payload — coerce types and guard against null/undefined
+      const payload = {
+        amount: parseFloat(editData.amount) || 0,
+        expectedAmount: parseFloat(editData.expectedAmount) || 0,
+        status: editData.status || 'PENDING',
+        notes: editData.notes !== null && editData.notes !== undefined
+          ? String(editData.notes)
+          : '',
+      };
+
       const res = await fetch(`/api/financial/contributions/${contributionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -65,11 +85,26 @@ export default function AdminFinancialDashboard() {
         throw new Error(data.error || 'Failed to update contribution');
       }
 
+      setSaveSuccess('Saved successfully');
       setEditingId(null);
-      fetchContributions();
+
+      // Refresh table data
+      await fetchContributions();
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveSuccess(''), 3000);
     } catch (err) {
-      setError(err.message);
+      setSaveError(err.message || 'Save failed. Please try again.');
+    } finally {
+      setSavingId(null);
     }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditData({});
+    setSaveError('');
+    setSaveSuccess('');
   };
 
   const handleDelete = async (contributionId) => {
@@ -125,9 +160,27 @@ export default function AdminFinancialDashboard() {
         </button>
       </div>
 
+      {/* Global fetch error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
+        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-center">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="ml-4 font-bold text-red-700 hover:text-red-900">✕</button>
+        </div>
+      )}
+
+      {/* Save success banner */}
+      {saveSuccess && (
+        <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center">
+          <span>✅ {saveSuccess}</span>
+          <button onClick={() => setSaveSuccess('')} className="ml-4 font-bold text-green-700 hover:text-green-900">✕</button>
+        </div>
+      )}
+
+      {/* Save error banner */}
+      {saveError && (
+        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-center">
+          <span>❌ {saveError}</span>
+          <button onClick={() => setSaveError('')} className="ml-4 font-bold text-red-700 hover:text-red-900">✕</button>
         </div>
       )}
 
@@ -173,113 +226,156 @@ export default function AdminFinancialDashboard() {
           </thead>
           <tbody>
             {contributions.map(contrib => {
-              const expectedAmount = Number(contrib.expectedAmount) || Number(contrib.amount) || 0;
-              const actualAmount = Number(contrib.amount) || 0;
+              const isEditing = editingId === contrib.id;
+              const isSaving = savingId === contrib.id;
+
+              const expectedAmount = isEditing
+                ? (parseFloat(editData.expectedAmount) || 0)
+                : (Number(contrib.expectedAmount) || Number(contrib.amount) || 0);
+              const actualAmount = isEditing
+                ? (parseFloat(editData.amount) || 0)
+                : (Number(contrib.amount) || 0);
               const balance = expectedAmount - actualAmount;
-              const balanceColor = balance === 0 ? 'text-green-600' : balance < 0 ? 'text-blue-600' : 'text-red-600';
-              
+              const balanceColor =
+                balance === 0 ? 'text-green-600' : balance < 0 ? 'text-blue-600' : 'text-red-600';
+
               return (
-              <tr key={contrib.id} className="hover:bg-gray-50">
-                <td className="border p-2">{contrib.user?.full_name || 'Unknown'}</td>
-                <td className="border p-2">
-                  <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
-                    {contrib.contribution_type.replace('_', ' ')}
-                  </span>
-                </td>
-                <td className="border p-2 text-right">
-                  {editingId === contrib.id ? (
-                    <input
-                      type="number"
-                      value={editData.expectedAmount}
-                      onChange={(e) => handleEditChange('expectedAmount', parseFloat(e.target.value) || 0)}
-                      className="border rounded px-2 py-1 w-24"
-                      step="0.01"
-                      min="0"
-                    />
-                  ) : (
-                    `KSh ${expectedAmount.toLocaleString()}`
-                  )}
-                </td>
-                <td className="border p-2 text-right">
-                  {editingId === contrib.id ? (
-                    <input
-                      type="number"
-                      value={editData.amount}
-                      onChange={(e) => handleEditChange('amount', parseFloat(e.target.value) || 0)}
-                      className="border rounded px-2 py-1 w-24"
-                      step="0.01"
-                      min="0"
-                    />
-                  ) : (
-                    `KSh ${actualAmount.toLocaleString()}`
-                  )}
-                </td>
-                <td className={`border p-2 text-right font-semibold ${balanceColor}`}>
-                  KSh {Math.abs(balance).toLocaleString()}
-                  <span className="text-xs ml-1">({balance === 0 ? 'Paid' : balance < 0 ? 'Overpaid' : 'Due'})</span>
-                </td>
-                <td className="border p-2">{new Date(contrib.contribution_date).toLocaleDateString()}</td>
-                <td className="border p-2">
-                  {editingId === contrib.id ? (
-                    <select
-                      value={editData.status}
-                      onChange={(e) => handleEditChange('status', e.target.value)}
-                      className="border rounded px-2 py-1"
-                    >
-                      <option value="PENDING">Pending</option>
-                      <option value="PARTIAL">Partial</option>
-                      <option value="PAID">Paid</option>
-                    </select>
-                  ) : (
-                    <span
-                      className={`text-xs px-2 py-1 rounded ${
-                        contrib.status === 'PAID'
-                          ? 'bg-green-100 text-green-800'
-                          : contrib.status === 'PARTIAL'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {contrib.status}
+                <tr key={contrib.id} className={`hover:bg-gray-50 ${isEditing ? 'bg-yellow-50' : ''}`}>
+                  <td className="border p-2">{contrib.user?.full_name || 'Unknown'}</td>
+                  <td className="border p-2">
+                    <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+                      {contrib.contribution_type.replace(/_/g, ' ')}
                     </span>
-                  )}
-                </td>
-                <td className="border p-2 text-sm">{contrib.notes || '-'}</td>
-                <td className="border p-2 text-center">
-                  {editingId === contrib.id ? (
-                    <>
-                      <button
-                        onClick={() => handleSaveEdit(contrib.id)}
-                        className="text-green-600 hover:text-green-800 font-bold mr-2"
+                  </td>
+
+                  {/* Expected Amount */}
+                  <td className="border p-2 text-right">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editData.expectedAmount}
+                        onChange={(e) => handleEditChange('expectedAmount', e.target.value)}
+                        className="border rounded px-2 py-1 w-24"
+                        step="0.01"
+                        min="0"
+                        disabled={isSaving}
+                      />
+                    ) : (
+                      `KSh ${expectedAmount.toLocaleString()}`
+                    )}
+                  </td>
+
+                  {/* Actual Amount */}
+                  <td className="border p-2 text-right">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editData.amount}
+                        onChange={(e) => handleEditChange('amount', e.target.value)}
+                        className="border rounded px-2 py-1 w-24"
+                        step="0.01"
+                        min="0"
+                        disabled={isSaving}
+                      />
+                    ) : (
+                      `KSh ${actualAmount.toLocaleString()}`
+                    )}
+                  </td>
+
+                  {/* Balance — updates live while editing */}
+                  <td className={`border p-2 text-right font-semibold ${balanceColor}`}>
+                    KSh {Math.abs(balance).toLocaleString()}
+                    <span className="text-xs ml-1">
+                      ({balance === 0 ? 'Paid' : balance < 0 ? 'Overpaid' : 'Due'})
+                    </span>
+                  </td>
+
+                  <td className="border p-2">
+                    {new Date(contrib.contribution_date).toLocaleDateString()}
+                  </td>
+
+                  {/* Status */}
+                  <td className="border p-2">
+                    {isEditing ? (
+                      <select
+                        value={editData.status}
+                        onChange={(e) => handleEditChange('status', e.target.value)}
+                        className="border rounded px-2 py-1"
+                        disabled={isSaving}
                       >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="text-gray-600 hover:text-gray-800"
+                        <option value="PENDING">Pending</option>
+                        <option value="PARTIAL">Partial</option>
+                        <option value="PAID">Paid</option>
+                      </select>
+                    ) : (
+                      <span
+                        className={`text-xs px-2 py-1 rounded ${
+                          contrib.status === 'PAID'
+                            ? 'bg-green-100 text-green-800'
+                            : contrib.status === 'PARTIAL'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}
                       >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleEditClick(contrib)}
-                        className="text-blue-600 hover:text-blue-800 mr-2"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(contrib.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            );
+                        {contrib.status}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Notes — now editable */}
+                  <td className="border p-2 text-sm">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editData.notes}
+                        onChange={(e) => handleEditChange('notes', e.target.value)}
+                        className="border rounded px-2 py-1 w-36"
+                        placeholder="Add notes..."
+                        disabled={isSaving}
+                      />
+                    ) : (
+                      contrib.notes || '-'
+                    )}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="border p-2 text-center whitespace-nowrap">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={() => handleSaveEdit(contrib.id)}
+                          disabled={isSaving}
+                          className="text-green-600 hover:text-green-800 font-bold mr-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isSaving ? 'Saving...' : 'Save'}
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          disabled={isSaving}
+                          className="text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleEditClick(contrib)}
+                          className="text-blue-600 hover:text-blue-800 mr-2"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(contrib.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
             })}
           </tbody>
         </table>

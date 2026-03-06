@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 
 export default function ContributionForm({ memberId, onSuccess, refreshKey = 0 }) {
   const [loading, setLoading] = useState(false);
+  const [balanceLoading, setBalanceLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [expectedAmounts, setExpectedAmounts] = useState({});
@@ -16,40 +17,72 @@ export default function ContributionForm({ memberId, onSuccess, refreshKey = 0 }
     notes: '',
   });
 
-  // Fetch expected amounts for each contribution type from the new system
+  // ---------------------------------------------------------------------------
+  // FIX 1 — Wrong fetch URL causing 403 and silent failure:
+  // The form was appending memberId as a query param to /api/financial/balance.
+  // That endpoint's guard blocks non-admin users from passing any memberId param
+  // (even their own id), returning 403. The fetch failed silently, leaving
+  // expectedAmounts empty and every balance field showing "Not set yet".
+  //
+  // The balance route already uses session.user.id when no memberId is given —
+  // which is exactly what a logged-in member needs. We omit the param entirely.
+  //
+  // FIX 2 — Wrong useEffect guard blocking the fetch entirely:
+  // The effect had `if (memberId) fetchExpectedAmounts()` meaning it never ran
+  // if the parent forgot to pass memberId or if it arrived late. Since the API
+  // resolves identity from the session cookie (not the prop), the guard is wrong.
+  // Removed — the effect now always fires on mount and on refreshKey changes.
+  // ---------------------------------------------------------------------------
   const fetchExpectedAmounts = async () => {
+    setBalanceLoading(true);
     try {
-      const res = await fetch(`/api/financial/expected-contribution?memberId=${memberId}&t=${Date.now()}`);
+      // No memberId param — server resolves identity from session cookie
+      const res = await fetch(`/api/financial/balance?t=${Date.now()}`);
       const data = await res.json();
-      if (res.ok) {
-        setExpectedAmounts(data.data || {
-          MONTHLY_CONTRIBUTION: 0,
-          SOCIAL_WELFARE: 0,
-          SPECIAL: 0,
+
+      if (!res.ok) {
+        console.error('Balance API error:', data.error, 'status:', res.status);
+        setError(`Could not load expected amounts: ${data.error || res.status}`);
+        setExpectedAmounts({});
+        return;
+      }
+
+      if (data.data) {
+        setExpectedAmounts({
+          MONTHLY_CONTRIBUTION: data.data.MONTHLY_CONTRIBUTION || { expected: 0, paid: 0, outstandingAmount: 0, hasExpectation: false },
+          SOCIAL_WELFARE:       data.data.SOCIAL_WELFARE       || { expected: 0, paid: 0, outstandingAmount: 0, hasExpectation: false },
+          SPECIAL:              data.data.SPECIAL              || { expected: 0, paid: 0, outstandingAmount: 0, hasExpectation: false },
         });
       }
     } catch (err) {
-      console.error('Failed to fetch expected amounts:', err);
-      setExpectedAmounts({
-        MONTHLY_CONTRIBUTION: 0,
-        SOCIAL_WELFARE: 0,
-        SPECIAL: 0,
-      });
+      console.error('Failed to fetch balances:', err);
+      setError('Network error loading expected amounts. Please refresh.');
+      setExpectedAmounts({});
+    } finally {
+      setBalanceLoading(false);
     }
   };
 
   useEffect(() => {
-    if (memberId) fetchExpectedAmounts();
-  }, [memberId, refreshKey]);
+    // FIX 2: No guard, no memberId dependency — session handles identity.
+    fetchExpectedAmounts();
+  }, [refreshKey]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (error) setError('');
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const expectedAmount = expectedAmounts[formData.contribution_type] || 0;
-  const actualAmount = parseFloat(formData.amount) || 0;
-  const balance = expectedAmount - actualAmount;
+  // Derived display values for the selected contribution type
+  const balanceData = expectedAmounts[formData.contribution_type] || {
+    expected: 0, paid: 0, outstandingAmount: 0, hasExpectation: false,
+  };
+  const expectedAmount    = balanceData.expected         || 0;
+  const outstandingAmount = balanceData.outstandingAmount || 0;
+  const alreadyPaid       = balanceData.paid              || 0;
+  const actualAmount      = parseFloat(formData.amount)  || 0;
+  const balance           = outstandingAmount - actualAmount;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,10 +94,13 @@ export default function ContributionForm({ memberId, onSuccess, refreshKey = 0 }
       const res = await fetch('/api/financial/contributions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // FIX 3: Do not send expectedAmount from the client — the fixed
+        // createContribution() derives it from ExpectedContribution server-side
+        // and ignores any client-supplied value. Sending it was causing confusion
+        // between the old "outstanding balance" value and the correct fixed amount.
         body: JSON.stringify({
           ...formData,
           amount: parseFloat(formData.amount),
-          expectedAmount,
         }),
       });
 
@@ -84,11 +120,9 @@ export default function ContributionForm({ memberId, onSuccess, refreshKey = 0 }
         notes: '',
       });
 
-      if (onSuccess) {
-        onSuccess(data.data);
-      }
+      if (onSuccess) onSuccess(data.data);
 
-      // Refresh expected amounts to reflect any admin updates
+      // Refresh balances to reflect the new payment
       await fetchExpectedAmounts();
 
       setTimeout(() => setSuccess(''), 3000);
@@ -133,18 +167,32 @@ export default function ContributionForm({ memberId, onSuccess, refreshKey = 0 }
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Expected Amount (KSh)</label>
+            <label className="block text-sm font-medium mb-1">Outstanding Balance (KSh)</label>
             <div className={`w-full border rounded px-3 py-2 font-semibold ${
-              expectedAmount > 0 
-                ? 'bg-gray-100 text-gray-700 cursor-not-allowed' 
-                : 'bg-yellow-50 text-yellow-700 border-yellow-300'
+              balanceLoading
+                ? 'bg-gray-50 text-gray-400 border-gray-200'
+                : !balanceData.hasExpectation
+                  ? 'bg-yellow-50 text-yellow-700 border-yellow-300'
+                  : balanceData.isFullyPaid
+                    ? 'bg-green-50 text-green-700 border-green-300'
+                    : 'bg-red-50 text-red-700 border-red-300'
             }`}>
-              {expectedAmount > 0 ? expectedAmount.toLocaleString() : 'Not set yet'}
+              {balanceLoading
+                ? 'Loading...'
+                : !balanceData.hasExpectation
+                  ? 'Not set yet'
+                  : balanceData.isFullyPaid
+                    ? '✓ Fully paid'
+                    : `${outstandingAmount.toLocaleString()} Due`}
             </div>
-            <p className={`text-xs mt-1 ${expectedAmount > 0 ? 'text-gray-500' : 'text-yellow-600'}`}>
-              {expectedAmount > 0 
-                ? '✓ Set by administrator' 
-                : '⚠️ Ask your admin to set your expectation. You can still record contributions.'}
+            <p className="text-xs mt-1 text-gray-500">
+              {balanceLoading
+                ? 'Fetching your balance...'
+                : !balanceData.hasExpectation
+                  ? '⚠️ Ask your admin to set your expected contribution first.'
+                  : balanceData.isFullyPaid
+                    ? `✓ Paid ${alreadyPaid.toLocaleString()} of ${expectedAmount.toLocaleString()}`
+                    : `Paid ${alreadyPaid.toLocaleString()} of ${expectedAmount.toLocaleString()} total`}
             </p>
           </div>
         </div>
@@ -166,19 +214,17 @@ export default function ContributionForm({ memberId, onSuccess, refreshKey = 0 }
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Balance (KSh)</label>
+            <label className="block text-sm font-medium mb-1">Remaining After This Payment</label>
             <div className={`w-full border rounded px-3 py-2 font-bold ${
-              balance === 0 ? 'bg-green-50 text-green-700' : 
-              balance < 0 ? 'bg-blue-50 text-blue-700' : 
-              expectedAmount === 0 ? 'bg-gray-50 text-gray-700' :
+              !balanceData.hasExpectation ? 'bg-gray-50 text-gray-700' :
+              balance <= 0 ? 'bg-green-50 text-green-700' :
               'bg-yellow-50 text-yellow-700'
             }`}>
-              {expectedAmount === 0 ? 'N/A' : Math.abs(balance).toLocaleString()}
-              {expectedAmount > 0 && (
-                <span className="text-xs ml-1">
-                  ({balance === 0 ? 'Paid' : balance < 0 ? 'Overpaid' : 'Due'})
-                </span>
-              )}
+              {!balanceData.hasExpectation
+                ? 'N/A'
+                : balance <= 0
+                  ? `${Math.abs(balance).toLocaleString()} ${balance < 0 ? '(Overpaid)' : '(Fully Paid)'}`
+                  : `${balance.toLocaleString()} still due`}
             </div>
           </div>
         </div>
@@ -238,7 +284,7 @@ export default function ContributionForm({ memberId, onSuccess, refreshKey = 0 }
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || balanceLoading}
           className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
         >
           {loading ? 'Recording...' : 'Record Contribution'}

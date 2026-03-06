@@ -103,24 +103,14 @@ export async function getMemberExpectedContributions(userId) {
  * Get or create registration fee for a member
  */
 export async function getOrCreateRegistrationFee(userId, expectedAmount = 2000) {
-  let fee = await prisma.registrationFee.findUnique({
+  const fee = await prisma.registrationFee.findUnique({
     where: { user_id: userId },
   });
 
-  if (!fee) {
-    // Account creation implies the registration fee has been paid,
-    // so we record it as PAID with the full amount already settled.
-    fee = await prisma.registrationFee.create({
-      data: {
-        user_id: userId,
-        expectedAmount: expectedAmount,
-        amountPaid: expectedAmount,
-        status: 'PAID',
-        paidDate: new Date(),
-      },
-    });
-  }
-
+  // FIXED: Do NOT auto-create or auto-mark as PAID here.
+  // Registration fees should only be created during actual member onboarding
+  // (e.g. in your signup/registration API route), not lazily on every summary fetch.
+  // Return null if no record exists — callers must handle this case.
   return fee;
 }
 
@@ -161,61 +151,101 @@ export async function getTotalExpectedByType(userId, type) {
 }
 
 /**
+ * Get the outstanding balance for a member by contribution type.
+ *
+ * Balance = active expected amount - total already paid for that type.
+ * This is the amount the member still OWES, surfaced to the contribution
+ * form so they see their actual remaining balance, not a fresh full expectation.
+ *
+ * Design: ExpectedContribution stays fixed (e.g. 20000/month).
+ * What changes is the cumulative paid total. Balance is always derived, never stored.
+ */
+export async function getMemberBalanceByType(userId, contributionType) {
+  const activeExpected = await getActiveExpectedContribution(userId, contributionType);
+  if (!activeExpected) {
+    return { expected: 0, paid: 0, balance: 0, outstandingAmount: 0, hasExpectation: false };
+  }
+
+  const expected = Number(activeExpected.expected_amount);
+
+  const result = await prisma.contribution.aggregate({
+    where: {
+      user_id: userId,
+      contribution_type: contributionType,
+    },
+    _sum: { amount: true },
+  });
+
+  const paid = Number(result._sum.amount || 0);
+  const outstanding = expected - paid;
+
+  return {
+    expected,
+    paid,
+    balance: outstanding,
+    outstandingAmount: Math.max(0, outstanding),
+    hasExpectation: true,
+    isFullyPaid: paid >= expected,
+    isOverpaid: paid > expected,
+    overpaidBy: paid > expected ? paid - expected : 0,
+  };
+}
+
+/**
  * Calculate member financial summary
+ *
+ * FIXED (Bug #1): Removed Math.max() that compared ExpectedContribution amounts
+ * against the summed Contribution.expectedAmount column. That sum grew with every
+ * payment and inflated the expected total shown on the dashboard.
+ *
+ * FIXED (Bug #2): expectedAmount on each Contribution row was being stored as the
+ * remaining outstanding balance at time of payment (not the full expected amount),
+ * making getTotalExpectedByType() return a meaningless, ever-growing number.
+ * We now derive all expected amounts solely from the ExpectedContribution table.
+ *
+ * FIXED (Bug #3): getOrCreateRegistrationFee() no longer auto-creates a PAID fee
+ * record. We call it here but handle a null result gracefully.
  */
 export async function getMemberFinancialSummary(userId) {
+  // Registration fee — may be null if not yet created during onboarding
   const regFee = await getOrCreateRegistrationFee(userId);
-  
-  // Get expected amounts from ExpectedContribution table
-  const expectedAmounts = await getMemberExpectedContributions(userId);
-  
-  // Get actual contributions
-  const monthlyTotal = await getTotalContributionByType(userId, 'MONTHLY_CONTRIBUTION');
-  const socialTotal = await getTotalContributionByType(userId, 'SOCIAL_WELFARE');
-  const specialTotal = await getTotalContributionByType(userId, 'SPECIAL');
 
-  // Get total expected from contribution records (for backward compatibility)
-  const monthlyExpected = await getTotalExpectedByType(userId, 'MONTHLY_CONTRIBUTION');
-  const socialExpected = await getTotalExpectedByType(userId, 'SOCIAL_WELFARE');
-  const specialExpected = await getTotalExpectedByType(userId, 'SPECIAL');
+  // SINGLE source of truth for expected amounts: ExpectedContribution table only.
+  // Do NOT use Contribution.expectedAmount for this — see Bug #2 fix above.
+  const expectedAmounts = await getMemberExpectedContributions(userId);
+
+  // Actual amounts paid, summed from real Contribution records
+  const [monthlyTotal, socialTotal, specialTotal] = await Promise.all([
+    getTotalContributionByType(userId, 'MONTHLY_CONTRIBUTION'),
+    getTotalContributionByType(userId, 'SOCIAL_WELFARE'),
+    getTotalContributionByType(userId, 'SPECIAL'),
+  ]);
+
+  const monthlyExpectedAmount = expectedAmounts.MONTHLY_CONTRIBUTION;
+  const socialExpectedAmount  = expectedAmounts.SOCIAL_WELFARE;
+  const specialExpectedAmount = expectedAmounts.SPECIAL;
 
   const totalContributed = Number(
     (Number(monthlyTotal) + Number(socialTotal) + Number(specialTotal)).toFixed(2)
   );
 
-  // Use the higher of: active expected contribution OR sum of expected amounts in contribution records
-  const monthlyExpectedAmount = Math.max(
-    expectedAmounts.MONTHLY_CONTRIBUTION,
-    Number(monthlyExpected)
-  );
-  const socialExpectedAmount = Math.max(
-    expectedAmounts.SOCIAL_WELFARE,
-    Number(socialExpected)
-  );
-  const specialExpectedAmount = Math.max(
-    expectedAmounts.SPECIAL,
-    Number(specialExpected)
-  );
-
-  // Registration fee is excluded from totalExpected — it is considered
-  // settled at the point of account creation and is tracked separately.
-  const totalExpected = monthlyExpectedAmount + 
-    socialExpectedAmount + 
-    specialExpectedAmount;
-
+  // Registration fee is tracked separately and excluded from totalExpected
+  const totalExpected = monthlyExpectedAmount + socialExpectedAmount + specialExpectedAmount;
   const difference = totalExpected - totalContributed;
 
   return {
     memberId: userId,
-    registrationFee: Number(regFee.expectedAmount),
-    registrationFeePaid: Number(regFee.amountPaid),
-    registrationStatus: regFee.status,
-    monthlyContribution: Number(monthlyTotal),
-    monthlyExpected: monthlyExpectedAmount,
-    socialWelfare: Number(socialTotal),
-    socialExpected: socialExpectedAmount,
-    specialContribution: Number(specialTotal),
-    specialExpected: specialExpectedAmount,
+    // Registration fee fields — show zeros/null-safe if fee record not yet created
+    registrationFee:       regFee ? Number(regFee.expectedAmount) : 0,
+    registrationFeePaid:   regFee ? Number(regFee.amountPaid)     : 0,
+    registrationStatus:    regFee ? regFee.status                 : 'PENDING',
+    // Contribution breakdown
+    monthlyContribution:   Number(monthlyTotal),
+    monthlyExpected:       monthlyExpectedAmount,
+    socialWelfare:         Number(socialTotal),
+    socialExpected:        socialExpectedAmount,
+    specialContribution:   Number(specialTotal),
+    specialExpected:       specialExpectedAmount,
     totalContributed,
     totalExpected,
     difference: Number(difference.toFixed(2)),
@@ -224,11 +254,19 @@ export async function getMemberFinancialSummary(userId) {
 
 /**
  * Create a new contribution entry
+ *
+ * FIXED (Bug #2): Previously stored the remaining outstanding balance as
+ * expectedAmount on each Contribution row. This caused the admin table to show
+ * a different "expected" value on every record (e.g. 20000, then 15000, then 10000),
+ * and made getTotalExpectedByType() accumulate a meaningless growing sum.
+ *
+ * Now we always store the full fixed expected amount from ExpectedContribution,
+ * so every row consistently shows what was expected for that contribution type.
+ * The outstanding balance is derived at query time (paid vs expected), never stored.
  */
 export async function createContribution(userId, data) {
   const {
     amount,
-    expectedAmount,
     contribution_type,
     contribution_date,
     payment_method,
@@ -237,33 +275,40 @@ export async function createContribution(userId, data) {
     recorded_by,
   } = data;
 
-  // Get active expected contribution if expectedAmount not provided
-  let finalExpectedAmount = expectedAmount;
-  if (!finalExpectedAmount) {
-    const activeExpected = await getActiveExpectedContribution(userId, contribution_type);
-    if (activeExpected) {
-      finalExpectedAmount = Number(activeExpected.expected_amount);
-    }
-  }
+  // Source of truth: always use the full fixed amount from ExpectedContribution
+  const activeExpected = await getActiveExpectedContribution(userId, contribution_type);
+  const fullExpectedAmount = activeExpected ? Number(activeExpected.expected_amount) : 0;
 
-  // Determine status based on amount vs expected
+  // How much has the member already paid for this type?
+  const alreadyPaidResult = await prisma.contribution.aggregate({
+    where: { user_id: userId, contribution_type },
+    _sum: { amount: true },
+  });
+  const alreadyPaid = Number(alreadyPaidResult._sum.amount || 0);
+
+  const contributedAmount = parseFloat(amount);
+  const newTotal = alreadyPaid + contributedAmount;
+
+  // Status is cumulative: based on total paid vs the single fixed expectation
   let status = 'PENDING';
-  if (finalExpectedAmount) {
-    const contributedAmount = parseFloat(amount);
-    if (contributedAmount >= finalExpectedAmount) {
+  if (fullExpectedAmount > 0) {
+    if (newTotal >= fullExpectedAmount) {
       status = 'PAID';
-    } else if (contributedAmount > 0) {
+    } else if (newTotal > 0) {
       status = 'PARTIAL';
     }
-  } else if (parseFloat(amount) > 0) {
+  } else if (contributedAmount > 0) {
+    // No expectation set — treat any payment as PAID
     status = 'PAID';
   }
 
   return prisma.contribution.create({
     data: {
       user_id: userId,
-      amount: parseFloat(amount),
-      expectedAmount: finalExpectedAmount ? parseFloat(finalExpectedAmount) : parseFloat(amount),
+      amount: contributedAmount,
+      // Store the FULL fixed expected amount — same value on every row for this type.
+      // Outstanding balance = fullExpectedAmount - sum(amount) — always derived, never stored.
+      expectedAmount: fullExpectedAmount > 0 ? fullExpectedAmount : null,
       contribution_type,
       contribution_date: new Date(contribution_date),
       status,
