@@ -243,11 +243,12 @@ export default function ContributionForm({ memberId, onSuccess, refreshKey = 0 }
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Payment Method</label>
+            <label className="block text-sm font-medium mb-1">Payment Method*</label>
             <select
               name="payment_method"
               value={formData.payment_method}
               onChange={handleChange}
+              required
               className="w-full border rounded px-3 py-2"
             >
               <option value="CASH">Cash</option>
@@ -259,12 +260,13 @@ export default function ContributionForm({ memberId, onSuccess, refreshKey = 0 }
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Transaction Reference</label>
+          <label className="block text-sm font-medium mb-1">Transaction Reference*</label>
           <input
             type="text"
             name="transaction_ref"
             value={formData.transaction_ref}
             onChange={handleChange}
+            required
             placeholder="e.g., M-Pesa confirmation no."
             className="w-full border rounded px-3 py-2"
           />
