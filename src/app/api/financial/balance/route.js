@@ -1,5 +1,4 @@
 // app/api/financial/balance/route.js
-//
 // Returns the outstanding balance for the current member (or a specific member
 // for admins) broken down by contribution type.
 //
