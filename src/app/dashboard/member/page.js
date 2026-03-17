@@ -1,3 +1,4 @@
+//Member Dashboard Page
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,6 +6,9 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import ContributionForm from '@/app/components/ContributionForm';
 import MemberFinancialSummary from '@/app/components/MemberFinancialSummary';
+import MemberEventsView from '@/app/components/MemberEventsView';
+import UpcomingEventsWidget from '@/app/components/UpcomingEventsWidget';
+import MemberAssetsView from '@/app/components/MemberAssetsView';
 
 export default function MemberDashboard() {
   const { data: session, status } = useSession();
@@ -26,7 +30,6 @@ export default function MemberDashboard() {
       return;
     }
 
-    // Profile data is already in session
     setUserProfile(session.user);
     setIsLoading(false);
   }, [session, status, router]);
@@ -51,9 +54,7 @@ export default function MemberDashboard() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">
-            Error Loading Profile
-          </h1>
+          <h1 className="text-2xl font-bold text-red-600">Error Loading Profile</h1>
           <p className="text-gray-500 mt-2">Please try signing in again</p>
         </div>
       </div>
@@ -67,12 +68,8 @@ export default function MemberDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Member Dashboard
-              </h1>
-              <p className="text-sm text-gray-500">
-                Welcome, {userProfile?.full_name || 'Member'}
-              </p>
+              <h1 className="text-2xl font-bold text-gray-900">Member Dashboard</h1>
+              <p className="text-sm text-gray-500">Welcome, {userProfile?.full_name || 'Member'}</p>
             </div>
             <button
               onClick={handleSignOut}
@@ -90,19 +87,20 @@ export default function MemberDashboard() {
         <div className="border-b border-gray-200 mb-8">
           <nav className="flex space-x-8" aria-label="Tabs">
             {[
-              { id: 'overview', label: 'Overview', icon: '📊' },
-              { id: 'contributions', label: 'Contributions', icon: '💰' },
-              { id: 'assets', label: 'Assets', icon: '🏦' },
-              { id: 'events', label: 'Events', icon: '📅' },
-              { id: 'profile', label: 'Profile', icon: '👤' },
+              { id: 'overview',      label: 'Overview',      icon: '📊' },
+              { id: 'contributions', label: 'Contributions',  icon: '💰' },
+              { id: 'assets',        label: 'Assets',         icon: '🏦' },
+              { id: 'events',        label: 'Events',         icon: '📅' },
+              { id: 'profile',       label: 'Profile',        icon: '👤' },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-1 py-4 font-medium text-sm border-b-2 transition ${activeTab === tab.id
+                className={`px-1 py-4 font-medium text-sm border-b-2 transition ${
+                  activeTab === tab.id
                     ? 'border-green-500 text-green-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                }`}
               >
                 {tab.icon} {tab.label}
               </button>
@@ -110,11 +108,9 @@ export default function MemberDashboard() {
           </nav>
         </div>
 
-        {/* Overview Tab */}
+        {/* ── Overview Tab ─────────────────────────────────────────────────── */}
         {activeTab === 'overview' && (
           <div className="space-y-8">
-            {/* Stats Cards */}
-            {/* Quick Info */}
             <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 🎯 Welcome to Your Member Dashboard
@@ -135,13 +131,18 @@ export default function MemberDashboard() {
 
             {/* Financial Summary */}
             <MemberFinancialSummary memberId={userProfile?.id} key={refreshKey} />
+
+            {/* Upcoming Events Widget */}
+            <UpcomingEventsWidget
+              limit={3}
+              onViewAll={() => setActiveTab('events')}
+            />
           </div>
         )}
 
-        {/* Contributions Tab */}
+        {/* ── Contributions Tab ─────────────────────────────────────────────── */}
         {activeTab === 'contributions' && (
           <div className="space-y-8">
-            {/* Refresh Button */}
             <div className="flex justify-end">
               <button
                 onClick={handleRefresh}
@@ -151,7 +152,6 @@ export default function MemberDashboard() {
               </button>
             </div>
 
-            {/* Info Card */}
             <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg border border-green-200 shadow-sm">
               <h3 className="font-semibold text-gray-900 mb-2">📋 How It Works</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -175,74 +175,43 @@ export default function MemberDashboard() {
           </div>
         )}
 
-        {/* Assets Tab */}
+        {/* ── Assets Tab ────────────────────────────────────────────────────── */}
         {activeTab === 'assets' && (
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Group Assets & Investments
-            </h2>
-            <p className="text-gray-600">
-              No assets recorded. Contact your administrator to view or add group
-              investments and related documents.
-            </p>
-          </div>
+          <MemberAssetsView />
         )}
 
-        {/* Events Tab */}
+        {/* ── Events Tab ────────────────────────────────────────────────────── */}
         {activeTab === 'events' && (
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Upcoming Events
-            </h2>
-            <p className="text-gray-600">
-              No upcoming events. Check back later for community events.
-            </p>
-          </div>
+          <MemberEventsView />
         )}
 
-        {/* Profile Tab */}
+        {/* ── Profile Tab ───────────────────────────────────────────────────── */}
         {activeTab === 'profile' && (
           <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">
-              Your Profile
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">Your Profile</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Full Name
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Full Name</label>
                 <p className="mt-1 text-gray-900">{userProfile?.full_name}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Email Address
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Email Address</label>
                 <p className="mt-1 text-gray-900">{userProfile?.email}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Phone Number
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Phone Number</label>
                 <p className="mt-1 text-gray-900">{userProfile?.phone}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Church Name
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Church Name</label>
                 <p className="mt-1 text-gray-900">{userProfile?.church_name}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Member ID
-                </label>
-                <p className="mt-1 text-gray-900 font-mono text-sm">
-                  {userProfile?.id}
-                </p>
+                <label className="block text-sm font-medium text-gray-700">Member ID</label>
+                <p className="mt-1 text-gray-900 font-mono text-sm">{userProfile?.id}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Role
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Role</label>
                 <p className="mt-1">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                     {userProfile?.role}
